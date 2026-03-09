@@ -111,6 +111,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Visual", meta=(EditCondition="bEnableProceduralVisualDeformation", ClampMin="0.01", ClampMax="0.2"))
 	float VisualMeshUpdateInterval = 0.033f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Collision", meta=(EditCondition="bEnableProceduralVisualDeformation"))
+	bool bDeformProceduralCollision = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Collision", meta=(EditCondition="bDeformProceduralCollision", ClampMin="0.01", ClampMax="0.2"))
+	float CollisionSyncInterval = 0.05f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|RHI")
 	bool bUseRHIDeformationPipeline = true;
 
@@ -139,6 +145,7 @@ private:
 	int32 NextProxyIndex = 0;
 	float CollisionUpdateTimer = 0.0f;
 	float VisualUpdateTimer = 0.0f;
+	float CollisionSyncTimer = 0.0f;
 
 	TObjectPtr<UProceduralMeshComponent> ProceduralVisualMesh = nullptr;
 	TArray<FVector> BaseVisualVertices;
