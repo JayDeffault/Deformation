@@ -17,4 +17,4 @@ void FDeformationModule::ShutdownModule()
 
 #undef LOCTEXT_NAMESPACE
 	
-IMPLEMENT_MODULE(FVehicleModule, Deformation)
+IMPLEMENT_MODULE(FDeformationModule, Deformation)

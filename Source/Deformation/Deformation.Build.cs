@@ -36,6 +36,8 @@ public class Deformation : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
+				"RHI",
+				"RenderCore",
 				"Slate",
 				"SlateCore",
 				"Chaos",
