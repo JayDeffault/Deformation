@@ -33,7 +33,7 @@ public:
 			{
 				const uint32 Bytes = FMath::Max(1u, MaxDentCount) * static_cast<uint32>(sizeof(FRHIDentPayload));
 				FRHIResourceCreateInfo CreateInfo(TEXT("CarDentPayloadBuffer"));
-				DentBuffer = RHICmdList.CreateVertexBuffer(Bytes, static_cast<uint32>(BUF_Dynamic | BUF_ShaderResource), CreateInfo);
+				DentBuffer = RHICmdList.CreateVertexBuffer(Bytes, static_cast<EBufferUsageFlags>(BUF_Dynamic | BUF_ShaderResource), CreateInfo);
 				Capacity = MaxDentCount;
 			});
 	}
