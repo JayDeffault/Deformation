@@ -108,7 +108,7 @@ protected:
 	float DentMergeDistance = 18.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Performance")
-	bool bEnableCollisionProxyUpdate = true;
+	bool bEnableCollisionProxyUpdate = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Performance", meta=(ClampMin="0.01", ClampMax="0.5", EditCondition="bEnableCollisionProxyUpdate"))
 	float CollisionUpdateInterval = 0.05f;

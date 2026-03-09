@@ -182,7 +182,6 @@ void UCarMeshDeformationComponent::BeginPlay()
 		VisualMesh = GetOwner() ? GetOwner()->FindComponentByClass<UStaticMeshComponent>() : nullptr;
 	}
 
-	CacheProxyState();
 	InitializeProceduralVisualMesh();
 	InitializeDeformableCollisionMesh();
 	InitializeLowLevelConvexCollision();
@@ -244,10 +243,6 @@ void UCarMeshDeformationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	UpdateDeformableCollisionMesh(DeltaTime);
 	UploadDentsToRHI();
 
-	if (bEnableCollisionProxyUpdate && !(bDeformProceduralCollision && (ProceduralVisualMesh || DeformableCollisionMesh)))
-	{
-		UpdateCollisionProxiesBudgeted(DeltaTime);
-	}
 }
 
 void UCarMeshDeformationComponent::InitializeProceduralVisualMesh()
@@ -381,8 +376,6 @@ void UCarMeshDeformationComponent::InitializeDeformableCollisionMesh()
 	DeformableCollisionMesh->SetEnableGravity(false);
 	DeformableCollisionMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	DeformableCollisionMesh->SetCollisionObjectType(ECC_WorldDynamic);
-	DeformableCollisionMesh->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-	DeformableCollisionMesh->SetCollisionResponseToChannel(ECC_Vehicle, ECR_Ignore);
 	DeformableCollisionMesh->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	DeformableCollisionMesh->CreateMeshSection(0, DeformedCollisionVertices, CollisionTriangles, CollisionNormals, CollisionUV0, CollisionColors, CollisionTangents, true);
 	if (AActor* OwnerActor = GetOwner())
