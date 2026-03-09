@@ -182,8 +182,13 @@ void UCarMeshDeformationComponent::BeginPlay()
 
 	CacheProxyState();
 	InitializeProceduralVisualMesh();
+	InitializeDeformableCollisionMesh();
 
-	if (ProceduralVisualMesh && bDeformProceduralCollision)
+	if (DeformableCollisionMesh && bDeformProceduralCollision)
+	{
+		DeformableCollisionMesh->OnComponentHit.AddDynamic(this, &UCarMeshDeformationComponent::OnMeshHit);
+	}
+	else if (ProceduralVisualMesh && bDeformProceduralCollision)
 	{
 		ProceduralVisualMesh->OnComponentHit.AddDynamic(this, &UCarMeshDeformationComponent::OnMeshHit);
 	}
@@ -212,6 +217,12 @@ void UCarMeshDeformationComponent::EndPlay(const EEndPlayReason::Type EndPlayRea
 		ProceduralVisualMesh = nullptr;
 	}
 
+	if (DeformableCollisionMesh)
+	{
+		DeformableCollisionMesh->DestroyComponent();
+		DeformableCollisionMesh = nullptr;
+	}
+
 	if (VisualMesh)
 	{
 		VisualMesh->SetVisibility(true, false);
@@ -227,9 +238,10 @@ void UCarMeshDeformationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 
 	TickDentSmoothing(DeltaTime);
 	UpdateProceduralVisualMesh(DeltaTime);
+	UpdateDeformableCollisionMesh(DeltaTime);
 	UploadDentsToRHI();
 
-	if (bEnableCollisionProxyUpdate && !(bEnableProceduralVisualDeformation && bDeformProceduralCollision && ProceduralVisualMesh))
+	if (bEnableCollisionProxyUpdate && !(bDeformProceduralCollision && (ProceduralVisualMesh || DeformableCollisionMesh)))
 	{
 		UpdateCollisionProxiesBudgeted(DeltaTime);
 	}
@@ -273,7 +285,8 @@ void UCarMeshDeformationComponent::InitializeProceduralVisualMesh()
 	ProceduralVisualMesh->RegisterComponent();
 	ProceduralVisualMesh->SetNotifyRigidBodyCollision(true);
 	ProceduralVisualMesh->SetGenerateOverlapEvents(false);
-	ProceduralVisualMesh->SetCollisionEnabled(bDeformProceduralCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+	const bool bUseDedicatedCollisionMesh = (bDeformProceduralCollision && DeformableCollisionStaticMesh != nullptr);
+	ProceduralVisualMesh->SetCollisionEnabled((bDeformProceduralCollision && !bUseDedicatedCollisionMesh) ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 
 	const int32 MaterialCount = VisualMesh->GetNumMaterials();
 	for (int32 MaterialIndex = 0; MaterialIndex < MaterialCount; ++MaterialIndex)
@@ -281,7 +294,7 @@ void UCarMeshDeformationComponent::InitializeProceduralVisualMesh()
 		ProceduralVisualMesh->SetMaterial(MaterialIndex, VisualMesh->GetMaterial(MaterialIndex));
 	}
 
-	ProceduralVisualMesh->CreateMeshSection(0, DeformedVisualVertices, VisualTriangles, VisualNormals, VisualUV0, VisualColors, VisualTangents, bDeformProceduralCollision);
+	ProceduralVisualMesh->CreateMeshSection(0, DeformedVisualVertices, VisualTriangles, VisualNormals, VisualUV0, VisualColors, VisualTangents, bDeformProceduralCollision && !bUseDedicatedCollisionMesh);
 	VisualMesh->SetVisibility(false, false);
 	if (bDeformProceduralCollision)
 	{
@@ -319,15 +332,76 @@ void UCarMeshDeformationComponent::UpdateProceduralVisualMesh(float DeltaTime)
 
 	ProceduralVisualMesh->UpdateMeshSection(0, DeformedVisualVertices, VisualNormals, VisualUV0, VisualColors, VisualTangents);
 
-	if (bDeformProceduralCollision)
+}
+
+void UCarMeshDeformationComponent::InitializeDeformableCollisionMesh()
+{
+	if (!bDeformProceduralCollision || !DeformableCollisionStaticMesh)
 	{
-		CollisionSyncTimer += DeltaTime;
-		if (CollisionSyncTimer >= CollisionSyncInterval)
+		return;
+	}
+
+	UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(DeformableCollisionStaticMesh, 0, 0, BaseCollisionVertices, CollisionTriangles, CollisionNormals, CollisionUV0, CollisionTangents);
+	if (BaseCollisionVertices.Num() == 0 || CollisionTriangles.Num() == 0)
+	{
+		return;
+	}
+
+	DeformedCollisionVertices = BaseCollisionVertices;
+	CollisionColors.SetNumZeroed(BaseCollisionVertices.Num());
+
+	DeformableCollisionMesh = NewObject<UProceduralMeshComponent>(GetOwner(), TEXT("CarDeformCollisionMesh"));
+	if (!DeformableCollisionMesh)
+	{
+		return;
+	}
+
+	if (AActor* OwnerActor = GetOwner())
+	{
+		if (USceneComponent* RootComponent = OwnerActor->GetRootComponent())
 		{
-			CollisionSyncTimer = 0.0f;
-			ProceduralVisualMesh->CreateMeshSection(0, DeformedVisualVertices, VisualTriangles, VisualNormals, VisualUV0, VisualColors, VisualTangents, true);
+			DeformableCollisionMesh->SetupAttachment(RootComponent);
 		}
 	}
+
+	if (VisualMesh)
+	{
+		DeformableCollisionMesh->SetRelativeTransform(VisualMesh->GetRelativeTransform());
+	}
+
+	DeformableCollisionMesh->RegisterComponent();
+	DeformableCollisionMesh->SetVisibility(false, false);
+	DeformableCollisionMesh->SetNotifyRigidBodyCollision(true);
+	DeformableCollisionMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	DeformableCollisionMesh->CreateMeshSection(0, DeformedCollisionVertices, CollisionTriangles, CollisionNormals, CollisionUV0, CollisionColors, CollisionTangents, true);
+
+	if (VisualMesh)
+	{
+		VisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+void UCarMeshDeformationComponent::UpdateDeformableCollisionMesh(float DeltaTime)
+{
+	if (!bDeformProceduralCollision || !DeformableCollisionMesh || BaseCollisionVertices.Num() == 0)
+	{
+		return;
+	}
+
+	CollisionSyncTimer += DeltaTime;
+	if (CollisionSyncTimer < CollisionSyncInterval)
+	{
+		return;
+	}
+	CollisionSyncTimer = 0.0f;
+
+	DeformedCollisionVertices.SetNumUninitialized(BaseCollisionVertices.Num());
+	for (int32 i = 0; i < BaseCollisionVertices.Num(); ++i)
+	{
+		DeformedCollisionVertices[i] = BaseCollisionVertices[i] + EvaluateDentOffset(BaseCollisionVertices[i]);
+	}
+
+	DeformableCollisionMesh->CreateMeshSection(0, DeformedCollisionVertices, CollisionTriangles, CollisionNormals, CollisionUV0, CollisionColors, CollisionTangents, true);
 }
 
 void UCarMeshDeformationComponent::UploadDentsToRHI()

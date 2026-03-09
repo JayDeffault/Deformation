@@ -8,6 +8,7 @@
 class UBoxComponent;
 class UPrimitiveComponent;
 class UStaticMeshComponent;
+class UStaticMesh;
 class FCarRHIDentUploader;
 struct FHitResult;
 
@@ -64,9 +65,14 @@ protected:
 	void UploadDentsToRHI();
 	void InitializeProceduralVisualMesh();
 	void UpdateProceduralVisualMesh(float DeltaTime);
+	void InitializeDeformableCollisionMesh();
+	void UpdateDeformableCollisionMesh(float DeltaTime);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation")
 	TObjectPtr<UStaticMeshComponent> VisualMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Collision")
+	TObjectPtr<UStaticMesh> DeformableCollisionStaticMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation")
 	TArray<TObjectPtr<UBoxComponent>> ConvexBoxes;
@@ -162,6 +168,15 @@ private:
 	TArray<FVector2D> VisualUV0;
 	TArray<FColor> VisualColors;
 	TArray<FProcMeshTangent> VisualTangents;
+
+	TObjectPtr<UProceduralMeshComponent> DeformableCollisionMesh = nullptr;
+	TArray<FVector> BaseCollisionVertices;
+	TArray<FVector> DeformedCollisionVertices;
+	TArray<int32> CollisionTriangles;
+	TArray<FVector> CollisionNormals;
+	TArray<FVector2D> CollisionUV0;
+	TArray<FColor> CollisionColors;
+	TArray<FProcMeshTangent> CollisionTangents;
 
 	TSharedPtr<FCarRHIDentUploader> RHIDentUploader;
 };
