@@ -36,9 +36,12 @@ public class Deformation : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
+				"RHI",
+				"RenderCore",
 				"Slate",
 				"SlateCore",
 				"Chaos",
+				"ProceduralMeshComponent",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
