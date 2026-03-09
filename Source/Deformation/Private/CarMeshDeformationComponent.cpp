@@ -6,6 +6,8 @@
 #include "KismetProceduralMeshLibrary.h"
 #include "RHI.h"
 #include "RHICommandList.h"
+#include "PhysicsEngine/BodySetup.h"
+#include "PhysicsEngine/AggregateGeom.h"
 
 struct FRHIDentPayload
 {
@@ -183,6 +185,7 @@ void UCarMeshDeformationComponent::BeginPlay()
 	CacheProxyState();
 	InitializeProceduralVisualMesh();
 	InitializeDeformableCollisionMesh();
+	InitializeLowLevelConvexCollision();
 
 	if (DeformableCollisionMesh && bDeformProceduralCollision)
 	{
@@ -402,6 +405,58 @@ void UCarMeshDeformationComponent::UpdateDeformableCollisionMesh(float DeltaTime
 	}
 
 	DeformableCollisionMesh->CreateMeshSection(0, DeformedCollisionVertices, CollisionTriangles, CollisionNormals, CollisionUV0, CollisionColors, CollisionTangents, true);
+	UpdateLowLevelConvexCollision();
+}
+
+void UCarMeshDeformationComponent::InitializeLowLevelConvexCollision()
+{
+	BaseLowLevelConvexElems.Reset();
+	DeformedLowLevelConvexElems.Reset();
+
+	if (!bDeformProceduralCollision || !bUseLowLevelConvexCollision || !DeformableCollisionStaticMesh)
+	{
+		return;
+	}
+
+	if (UBodySetup* SourceBodySetup = DeformableCollisionStaticMesh->GetBodySetup())
+	{
+		if (SourceBodySetup->AggGeom.ConvexElems.Num() > 0)
+		{
+			BaseLowLevelConvexElems = SourceBodySetup->AggGeom.ConvexElems;
+			DeformedLowLevelConvexElems = BaseLowLevelConvexElems;
+		}
+	}
+}
+
+void UCarMeshDeformationComponent::UpdateLowLevelConvexCollision()
+{
+	if (!bDeformProceduralCollision || !bUseLowLevelConvexCollision || !DeformableCollisionMesh)
+	{
+		return;
+	}
+
+	if (BaseLowLevelConvexElems.Num() == 0)
+	{
+		return;
+	}
+
+	if (UBodySetup* BodySetup = DeformableCollisionMesh->GetBodySetup())
+	{
+		DeformedLowLevelConvexElems = BaseLowLevelConvexElems;
+		for (FKConvexElem& Convex : DeformedLowLevelConvexElems)
+		{
+			for (FVector& Vertex : Convex.VertexData)
+			{
+				Vertex += EvaluateDentOffset(Vertex);
+			}
+			Convex.UpdateElemBox();
+		}
+
+		BodySetup->AggGeom.ConvexElems = DeformedLowLevelConvexElems;
+		BodySetup->InvalidatePhysicsData();
+		BodySetup->CreatePhysicsMeshes();
+		DeformableCollisionMesh->RecreatePhysicsState();
+	}
 }
 
 void UCarMeshDeformationComponent::UploadDentsToRHI()

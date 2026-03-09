@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "ProceduralMeshComponent.h"
+#include "PhysicsEngine/AggregateGeom.h"
 #include "CarMeshDeformationComponent.generated.h"
 
 class UBoxComponent;
@@ -67,6 +68,8 @@ protected:
 	void UpdateProceduralVisualMesh(float DeltaTime);
 	void InitializeDeformableCollisionMesh();
 	void UpdateDeformableCollisionMesh(float DeltaTime);
+	void InitializeLowLevelConvexCollision();
+	void UpdateLowLevelConvexCollision();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation")
 	TObjectPtr<UStaticMeshComponent> VisualMesh = nullptr;
@@ -129,6 +132,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Collision", meta=(EditCondition="bDeformProceduralCollision", ClampMin="0.01", ClampMax="0.2"))
 	float CollisionSyncInterval = 0.05f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Collision", meta=(EditCondition="bDeformProceduralCollision"))
+	bool bUseLowLevelConvexCollision = true;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|RHI")
 	bool bUseRHIDeformationPipeline = true;
 
@@ -177,6 +183,8 @@ private:
 	TArray<FVector2D> CollisionUV0;
 	TArray<FColor> CollisionColors;
 	TArray<FProcMeshTangent> CollisionTangents;
+	TArray<FKConvexElem> BaseLowLevelConvexElems;
+	TArray<FKConvexElem> DeformedLowLevelConvexElems;
 
 	TSharedPtr<FCarRHIDentUploader> RHIDentUploader;
 };
