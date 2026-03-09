@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "CarMeshDeformationComponent.generated.h"
 
 class UBoxComponent;
@@ -61,6 +62,8 @@ protected:
 	void TickDentSmoothing(float DeltaTime);
 	void MergeOrAddDent(const FRuntimeDent& InDent);
 	void UploadDentsToRHI();
+	void InitializeProceduralVisualMesh();
+	void UpdateProceduralVisualMesh(float DeltaTime);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation")
 	TObjectPtr<UStaticMeshComponent> VisualMesh = nullptr;
@@ -101,6 +104,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Performance", meta=(EditCondition="bEnableCollisionProxyUpdate"))
 	bool bUseLowLevelCollisionVertexPath = true;
 
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Visual")
+	bool bEnableProceduralVisualDeformation = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Visual", meta=(EditCondition="bEnableProceduralVisualDeformation", ClampMin="0.01", ClampMax="0.2"))
+	float VisualMeshUpdateInterval = 0.033f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|RHI")
 	bool bUseRHIDeformationPipeline = true;
 
@@ -128,6 +138,16 @@ private:
 
 	int32 NextProxyIndex = 0;
 	float CollisionUpdateTimer = 0.0f;
+	float VisualUpdateTimer = 0.0f;
+
+	TObjectPtr<UProceduralMeshComponent> ProceduralVisualMesh = nullptr;
+	TArray<FVector> BaseVisualVertices;
+	TArray<FVector> DeformedVisualVertices;
+	TArray<int32> VisualTriangles;
+	TArray<FVector> VisualNormals;
+	TArray<FVector2D> VisualUV0;
+	TArray<FColor> VisualColors;
+	TArray<FProcMeshTangent> VisualTangents;
 
 	TSharedPtr<FCarRHIDentUploader> RHIDentUploader;
 };

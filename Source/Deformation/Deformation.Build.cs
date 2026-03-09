@@ -41,6 +41,7 @@ public class Deformation : ModuleRules
 				"Slate",
 				"SlateCore",
 				"Chaos",
+				"ProceduralMeshComponent",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

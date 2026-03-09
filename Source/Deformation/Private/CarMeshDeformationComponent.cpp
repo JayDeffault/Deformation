@@ -2,6 +2,8 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "ProceduralMeshComponent.h"
+#include "KismetProceduralMeshLibrary.h"
 #include "RHI.h"
 #include "RHICommandList.h"
 
@@ -184,6 +186,7 @@ void UCarMeshDeformationComponent::BeginPlay()
 	}
 
 	CacheProxyState();
+	InitializeProceduralVisualMesh();
 
 	if (bUseRHIDeformationPipeline)
 	{
@@ -199,6 +202,17 @@ void UCarMeshDeformationComponent::EndPlay(const EEndPlayReason::Type EndPlayRea
 		RHIDentUploader.Reset();
 	}
 
+	if (ProceduralVisualMesh)
+	{
+		ProceduralVisualMesh->DestroyComponent();
+		ProceduralVisualMesh = nullptr;
+	}
+
+	if (VisualMesh)
+	{
+		VisualMesh->SetVisibility(true, false);
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -207,12 +221,89 @@ void UCarMeshDeformationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	TickDentSmoothing(DeltaTime);
+	UpdateProceduralVisualMesh(DeltaTime);
 	UploadDentsToRHI();
 
 	if (bEnableCollisionProxyUpdate)
 	{
 		UpdateCollisionProxiesBudgeted(DeltaTime);
 	}
+}
+
+void UCarMeshDeformationComponent::InitializeProceduralVisualMesh()
+{
+	if (!bEnableProceduralVisualDeformation || !VisualMesh || !VisualMesh->GetStaticMesh())
+	{
+		return;
+	}
+
+	if (ProceduralVisualMesh)
+	{
+		return;
+	}
+
+	UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(VisualMesh->GetStaticMesh(), 0, 0, BaseVisualVertices, VisualTriangles, VisualNormals, VisualUV0, VisualTangents);
+	if (BaseVisualVertices.Num() == 0 || VisualTriangles.Num() == 0)
+	{
+		return;
+	}
+
+	DeformedVisualVertices = BaseVisualVertices;
+	VisualColors.SetNumZeroed(BaseVisualVertices.Num());
+
+	ProceduralVisualMesh = NewObject<UProceduralMeshComponent>(GetOwner(), TEXT("CarDeformedMesh"));
+	if (!ProceduralVisualMesh)
+	{
+		return;
+	}
+
+	if (USceneComponent* ParentComponent = VisualMesh->GetAttachParent())
+	{
+		ProceduralVisualMesh->SetupAttachment(ParentComponent);
+	}
+	ProceduralVisualMesh->SetWorldTransform(VisualMesh->GetComponentTransform());
+	ProceduralVisualMesh->RegisterComponent();
+	ProceduralVisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	const int32 MaterialCount = VisualMesh->GetNumMaterials();
+	for (int32 MaterialIndex = 0; MaterialIndex < MaterialCount; ++MaterialIndex)
+	{
+		ProceduralVisualMesh->SetMaterial(MaterialIndex, VisualMesh->GetMaterial(MaterialIndex));
+	}
+
+	ProceduralVisualMesh->CreateMeshSection(0, DeformedVisualVertices, VisualTriangles, VisualNormals, VisualUV0, VisualColors, VisualTangents, false);
+	VisualMesh->SetVisibility(false, false);
+}
+
+void UCarMeshDeformationComponent::UpdateProceduralVisualMesh(float DeltaTime)
+{
+	if (!bEnableProceduralVisualDeformation || !ProceduralVisualMesh || BaseVisualVertices.Num() == 0)
+	{
+		return;
+	}
+
+	VisualUpdateTimer += DeltaTime;
+	if (VisualUpdateTimer < VisualMeshUpdateInterval)
+	{
+		return;
+	}
+	VisualUpdateTimer = 0.0f;
+
+	bool bAnyChange = false;
+	DeformedVisualVertices.SetNumUninitialized(BaseVisualVertices.Num());
+	for (int32 i = 0; i < BaseVisualVertices.Num(); ++i)
+	{
+		const FVector Deformed = BaseVisualVertices[i] + EvaluateDentOffset(BaseVisualVertices[i]);
+		DeformedVisualVertices[i] = Deformed;
+		bAnyChange |= !Deformed.Equals(BaseVisualVertices[i], 0.1f);
+	}
+
+	if (!bAnyChange && RuntimeDents.Num() == 0)
+	{
+		return;
+	}
+
+	ProceduralVisualMesh->UpdateMeshSection(0, DeformedVisualVertices, VisualNormals, VisualUV0, VisualColors, VisualTangents);
 }
 
 void UCarMeshDeformationComponent::UploadDentsToRHI()
