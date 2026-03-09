@@ -16,6 +16,11 @@ struct FRHIDentPayload
 class FCarRHIDentUploader
 {
 public:
+	FCarRHIDentUploader()
+		: SharedState(MakeShared<FState, ESPMode::ThreadSafe>())
+	{
+	}
+
 	~FCarRHIDentUploader()
 	{
 		Release();
@@ -28,13 +33,20 @@ public:
 			return;
 		}
 
+		const uint32 SafeMaxDentCount = FMath::Max(1u, MaxDentCount);
+		TSharedPtr<FState, ESPMode::ThreadSafe> State = SharedState;
 		ENQUEUE_RENDER_COMMAND(InitDentBuffer)(
-			[this, MaxDentCount](FRHICommandListImmediate& RHICmdList)
+			[State, SafeMaxDentCount](FRHICommandListImmediate& RHICmdList)
 			{
-				const uint32 Bytes = FMath::Max(1u, MaxDentCount) * static_cast<uint32>(sizeof(FRHIDentPayload));
+				if (!State.IsValid())
+				{
+					return;
+				}
+
+				const uint32 Bytes = SafeMaxDentCount * static_cast<uint32>(sizeof(FRHIDentPayload));
 				FRHIResourceCreateInfo CreateInfo(TEXT("CarDentPayloadBuffer"));
-				DentBuffer = RHICmdList.CreateVertexBuffer(Bytes, static_cast<EBufferUsageFlags>(BUF_Dynamic | BUF_ShaderResource), CreateInfo);
-				Capacity = MaxDentCount;
+				State->DentBuffer = RHICmdList.CreateVertexBuffer(Bytes, static_cast<EBufferUsageFlags>(BUF_Dynamic | BUF_ShaderResource), CreateInfo);
+				State->Capacity = SafeMaxDentCount;
 			});
 	}
 
@@ -45,15 +57,11 @@ public:
 			return;
 		}
 
-		if (!DentBuffer.IsValid() || Capacity != MaxDentCount)
-		{
-			Initialize(MaxDentCount);
-		}
-
+		const uint32 SafeMaxDentCount = FMath::Max(1u, MaxDentCount);
 		TArray<FRHIDentPayload> Payload;
-		Payload.Reserve(MaxDentCount);
+		Payload.Reserve(SafeMaxDentCount);
 
-		const int32 CountToCopy = FMath::Min(static_cast<int32>(MaxDentCount), RuntimeDents.Num());
+		const int32 CountToCopy = FMath::Min(static_cast<int32>(SafeMaxDentCount), RuntimeDents.Num());
 		for (int32 Index = 0; Index < CountToCopy; ++Index)
 		{
 			const FRuntimeDent& Dent = RuntimeDents[Index];
@@ -70,20 +78,34 @@ public:
 			Payload.Add(Item);
 		}
 
-		Payload.SetNum(MaxDentCount);
+		Payload.SetNum(SafeMaxDentCount);
 
+		TSharedPtr<FState, ESPMode::ThreadSafe> State = SharedState;
 		ENQUEUE_RENDER_COMMAND(UploadDentBuffer)(
-			[this, Payload = MoveTemp(Payload)](FRHICommandListImmediate& RHICmdList)
+			[State, SafeMaxDentCount, Payload = MoveTemp(Payload)](FRHICommandListImmediate& RHICmdList)
 			{
-				if (!DentBuffer.IsValid())
+				if (!State.IsValid())
 				{
 					return;
 				}
 
-				const uint32 NumBytes = Payload.Num() * sizeof(FRHIDentPayload);
-				void* Data = RHICmdList.LockBuffer(DentBuffer, 0, NumBytes, RLM_WriteOnly);
+				if (!State->DentBuffer.IsValid() || State->Capacity != SafeMaxDentCount)
+				{
+					const uint32 Bytes = SafeMaxDentCount * static_cast<uint32>(sizeof(FRHIDentPayload));
+					FRHIResourceCreateInfo CreateInfo(TEXT("CarDentPayloadBuffer"));
+					State->DentBuffer = RHICmdList.CreateVertexBuffer(Bytes, static_cast<EBufferUsageFlags>(BUF_Dynamic | BUF_ShaderResource), CreateInfo);
+					State->Capacity = SafeMaxDentCount;
+				}
+
+				if (!State->DentBuffer.IsValid())
+				{
+					return;
+				}
+
+				const uint32 NumBytes = Payload.Num() * static_cast<uint32>(sizeof(FRHIDentPayload));
+				void* Data = RHICmdList.LockBuffer(State->DentBuffer, 0, NumBytes, RLM_WriteOnly);
 				FMemory::Memcpy(Data, Payload.GetData(), NumBytes);
-				RHICmdList.UnlockBuffer(DentBuffer);
+				RHICmdList.UnlockBuffer(State->DentBuffer);
 			});
 	}
 
@@ -94,17 +116,28 @@ public:
 			return;
 		}
 
+		TSharedPtr<FState, ESPMode::ThreadSafe> State = SharedState;
 		ENQUEUE_RENDER_COMMAND(ReleaseDentBuffer)(
-			[this](FRHICommandListImmediate& RHICmdList)
+			[State](FRHICommandListImmediate& RHICmdList)
 			{
-				DentBuffer.SafeRelease();
-				Capacity = 0;
+				if (!State.IsValid())
+				{
+					return;
+				}
+
+				State->DentBuffer.SafeRelease();
+				State->Capacity = 0;
 			});
 	}
 
 private:
-	FBufferRHIRef DentBuffer;
-	uint32 Capacity = 0;
+	struct FState
+	{
+		FBufferRHIRef DentBuffer;
+		uint32 Capacity = 0;
+	};
+
+	TSharedPtr<FState, ESPMode::ThreadSafe> SharedState;
 };
 
 namespace
@@ -163,7 +196,6 @@ void UCarMeshDeformationComponent::EndPlay(const EEndPlayReason::Type EndPlayRea
 {
 	if (RHIDentUploader.IsValid())
 	{
-		RHIDentUploader->Release();
 		RHIDentUploader.Reset();
 	}
 
