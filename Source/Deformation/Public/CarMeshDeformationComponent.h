@@ -83,6 +83,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation")
 	float HitToDepthScale = 0.0020f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation", meta=(ClampMin="0.0"))
+	float MinImpactForDent = 20000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation", meta=(ClampMin="0.01", ClampMax="0.5"))
+	float HitCooldown = 0.08f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation")
 	float DentLifetime = 8.0f;
 
@@ -146,6 +152,7 @@ private:
 	float CollisionUpdateTimer = 0.0f;
 	float VisualUpdateTimer = 0.0f;
 	float CollisionSyncTimer = 0.0f;
+	float LastAcceptedHitTime = -1000.0f;
 
 	TObjectPtr<UProceduralMeshComponent> ProceduralVisualMesh = nullptr;
 	TArray<FVector> BaseVisualVertices;

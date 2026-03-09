@@ -343,21 +343,10 @@ void UCarMeshDeformationComponent::UploadDentsToRHI()
 
 void UCarMeshDeformationComponent::TickDentSmoothing(float DeltaTime)
 {
-	for (int32 i = RuntimeDents.Num() - 1; i >= 0; --i)
+	for (FRuntimeDent& Dent : RuntimeDents)
 	{
-		FRuntimeDent& Dent = RuntimeDents[i];
-		Dent.RemainingTime -= DeltaTime;
 		Dent.CurrentDepth = FMath::FInterpTo(Dent.CurrentDepth, Dent.TargetDepth, DeltaTime, DentSmoothSpeed);
-
-		if (Dent.RemainingTime <= 0.0f)
-		{
-			Dent.TargetDepth = 0.0f;
-		}
-
-		if (Dent.RemainingTime <= -0.8f && Dent.CurrentDepth <= 0.1f)
-		{
-			RuntimeDents.RemoveAtSwap(i);
-		}
+		Dent.RemainingTime = FMath::Max(0.0f, Dent.RemainingTime);
 	}
 }
 
@@ -369,7 +358,7 @@ void UCarMeshDeformationComponent::MergeOrAddDent(const FRuntimeDent& InDent)
 		{
 			Existing.TargetDepth = FMath::Clamp(FMath::Max(Existing.TargetDepth, InDent.TargetDepth), 0.0f, MaxDentDepth);
 			Existing.LocalNormal = (Existing.LocalNormal + InDent.LocalNormal).GetSafeNormal();
-			Existing.RemainingTime = FMath::Max(Existing.RemainingTime, InDent.RemainingTime);
+			Existing.RemainingTime = TNumericLimits<float>::Max();
 			return;
 		}
 	}
@@ -380,7 +369,7 @@ void UCarMeshDeformationComponent::MergeOrAddDent(const FRuntimeDent& InDent)
 		float MinScore = TNumericLimits<float>::Max();
 		for (int32 i = 0; i < RuntimeDents.Num(); ++i)
 		{
-			const float Score = RuntimeDents[i].TargetDepth + FMath::Max(RuntimeDents[i].RemainingTime, 0.0f);
+			const float Score = RuntimeDents[i].TargetDepth;
 			if (Score < MinScore)
 			{
 				MinScore = Score;
@@ -407,7 +396,7 @@ void UCarMeshDeformationComponent::AddDentWorld(const FVector& WorldPoint, const
 	Dent.TargetDepth = FMath::Clamp(Strength, 1.0f, MaxDentDepth);
 	Dent.CurrentDepth = FMath::Max(0.2f, Dent.TargetDepth * 0.2f);
 	Dent.Radius = DentRadius;
-	Dent.RemainingTime = DentLifetime;
+	Dent.RemainingTime = TNumericLimits<float>::Max();
 	MergeOrAddDent(Dent);
 }
 
@@ -415,6 +404,21 @@ void UCarMeshDeformationComponent::OnMeshHit(UPrimitiveComponent* HitComponent, 
 	FVector NormalImpulse, const FHitResult& Hit)
 {
 	const float ImpulseMagnitude = NormalImpulse.Size();
+	if (ImpulseMagnitude < MinImpactForDent)
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		const float Now = World->GetTimeSeconds();
+		if ((Now - LastAcceptedHitTime) < HitCooldown)
+		{
+			return;
+		}
+		LastAcceptedHitTime = Now;
+	}
+
 	const float Depth = FMath::Clamp(ImpulseMagnitude * HitToDepthScale, 1.0f, MaxDentDepth);
 	AddDentWorld(Hit.ImpactPoint, Hit.ImpactNormal, Depth);
 }
