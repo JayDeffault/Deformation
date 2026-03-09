@@ -323,7 +323,7 @@ void UCarMeshDeformationComponent::UpdateProceduralVisualMesh(float DeltaTime)
 		if (CollisionSyncTimer >= CollisionSyncInterval)
 		{
 			CollisionSyncTimer = 0.0f;
-			ProceduralVisualMesh->UpdateCollision();
+			ProceduralVisualMesh->CreateMeshSection(0, DeformedVisualVertices, VisualTriangles, VisualNormals, VisualUV0, VisualColors, VisualTangents, true);
 		}
 	}
 }
