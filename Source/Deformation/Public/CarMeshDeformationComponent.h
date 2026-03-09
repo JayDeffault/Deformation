@@ -133,10 +133,10 @@ protected:
 	float CollisionSyncInterval = 0.05f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|Collision", meta=(EditCondition="bDeformProceduralCollision"))
-	bool bUseLowLevelConvexCollision = true;
+	bool bUseLowLevelConvexCollision = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|RHI")
-	bool bUseRHIDeformationPipeline = true;
+	bool bUseRHIDeformationPipeline = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Deformation|RHI", meta=(EditCondition="bUseRHIDeformationPipeline", ClampMin="8", ClampMax="256"))
 	int32 RHIMaxDents = 64;

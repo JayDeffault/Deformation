@@ -191,6 +191,7 @@ void UCarMeshDeformationComponent::BeginPlay()
 		VisualMesh->OnComponentHit.AddDynamic(this, &UCarMeshDeformationComponent::OnMeshHit);
 	}
 
+	if (GetWorld() && GetWorld()->IsGameWorld())
 	if (AActor* OwnerActor = GetOwner())
 	{
 		if (UPrimitiveComponent* RootPrimitive = Cast<UPrimitiveComponent>(OwnerActor->GetRootComponent()))
@@ -409,7 +410,10 @@ void UCarMeshDeformationComponent::UpdateDeformableCollisionMesh(float DeltaTime
 	{
 		DeformableCollisionMesh->IgnoreActorWhenMoving(OwnerActor, true);
 	}
-	UpdateLowLevelConvexCollision();
+	if (bUseLowLevelConvexCollision)
+	{
+		UpdateLowLevelConvexCollision();
+	}
 }
 
 void UCarMeshDeformationComponent::InitializeLowLevelConvexCollision()
@@ -434,7 +438,7 @@ void UCarMeshDeformationComponent::InitializeLowLevelConvexCollision()
 
 void UCarMeshDeformationComponent::UpdateLowLevelConvexCollision()
 {
-	if (!bDeformProceduralCollision || !bUseLowLevelConvexCollision || !DeformableCollisionMesh)
+	if (!bDeformProceduralCollision || !bUseLowLevelConvexCollision || !DeformableCollisionMesh || !GetWorld() || !(GetWorld()->IsGameWorld()))
 	{
 		return;
 	}
