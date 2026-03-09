@@ -262,13 +262,15 @@ void UCarMeshDeformationComponent::InitializeProceduralVisualMesh()
 		return;
 	}
 
-	if (USceneComponent* ParentComponent = VisualMesh->GetAttachParent())
+	if (AActor* OwnerActor = GetOwner())
 	{
-		ProceduralVisualMesh->SetupAttachment(ParentComponent);
+		if (USceneComponent* RootComponent = OwnerActor->GetRootComponent())
+		{
+			ProceduralVisualMesh->SetupAttachment(RootComponent);
+		}
 	}
-	ProceduralVisualMesh->SetWorldTransform(VisualMesh->GetComponentTransform());
+	ProceduralVisualMesh->SetRelativeTransform(VisualMesh->GetRelativeTransform());
 	ProceduralVisualMesh->RegisterComponent();
-	ProceduralVisualMesh->bUseComplexAsSimpleCollision = bDeformProceduralCollision;
 	ProceduralVisualMesh->SetNotifyRigidBodyCollision(true);
 	ProceduralVisualMesh->SetGenerateOverlapEvents(false);
 	ProceduralVisualMesh->SetCollisionEnabled(bDeformProceduralCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
