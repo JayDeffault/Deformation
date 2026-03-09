@@ -288,6 +288,8 @@ void UCarMeshDeformationComponent::InitializeProceduralVisualMesh()
 	ProceduralVisualMesh->RegisterComponent();
 	ProceduralVisualMesh->SetNotifyRigidBodyCollision(true);
 	ProceduralVisualMesh->SetGenerateOverlapEvents(false);
+	ProceduralVisualMesh->SetSimulatePhysics(false);
+	ProceduralVisualMesh->SetEnableGravity(false);
 	const bool bUseDedicatedCollisionMesh = (bDeformProceduralCollision && DeformableCollisionStaticMesh != nullptr);
 	ProceduralVisualMesh->SetCollisionEnabled((bDeformProceduralCollision && !bUseDedicatedCollisionMesh) ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 
@@ -375,8 +377,18 @@ void UCarMeshDeformationComponent::InitializeDeformableCollisionMesh()
 	DeformableCollisionMesh->RegisterComponent();
 	DeformableCollisionMesh->SetVisibility(false, false);
 	DeformableCollisionMesh->SetNotifyRigidBodyCollision(true);
+	DeformableCollisionMesh->SetSimulatePhysics(false);
+	DeformableCollisionMesh->SetEnableGravity(false);
 	DeformableCollisionMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	DeformableCollisionMesh->SetCollisionObjectType(ECC_WorldDynamic);
+	DeformableCollisionMesh->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	DeformableCollisionMesh->SetCollisionResponseToChannel(ECC_Vehicle, ECR_Ignore);
+	DeformableCollisionMesh->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	DeformableCollisionMesh->CreateMeshSection(0, DeformedCollisionVertices, CollisionTriangles, CollisionNormals, CollisionUV0, CollisionColors, CollisionTangents, true);
+	if (AActor* OwnerActor = GetOwner())
+	{
+		DeformableCollisionMesh->IgnoreActorWhenMoving(OwnerActor, true);
+	}
 
 	if (VisualMesh)
 	{
@@ -405,6 +417,10 @@ void UCarMeshDeformationComponent::UpdateDeformableCollisionMesh(float DeltaTime
 	}
 
 	DeformableCollisionMesh->CreateMeshSection(0, DeformedCollisionVertices, CollisionTriangles, CollisionNormals, CollisionUV0, CollisionColors, CollisionTangents, true);
+	if (AActor* OwnerActor = GetOwner())
+	{
+		DeformableCollisionMesh->IgnoreActorWhenMoving(OwnerActor, true);
+	}
 	UpdateLowLevelConvexCollision();
 }
 
