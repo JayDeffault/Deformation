@@ -129,5 +129,5 @@ private:
 	int32 NextProxyIndex = 0;
 	float CollisionUpdateTimer = 0.0f;
 
-	TUniquePtr<FCarRHIDentUploader> RHIDentUploader;
+	TSharedPtr<FCarRHIDentUploader> RHIDentUploader;
 };

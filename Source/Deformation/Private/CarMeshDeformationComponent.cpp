@@ -154,7 +154,7 @@ void UCarMeshDeformationComponent::BeginPlay()
 
 	if (bUseRHIDeformationPipeline)
 	{
-		RHIDentUploader = MakeUnique<FCarRHIDentUploader>();
+		RHIDentUploader = MakeShared<FCarRHIDentUploader>();
 		RHIDentUploader->Initialize(static_cast<uint32>(FMath::Max(8, RHIMaxDents)));
 	}
 }
