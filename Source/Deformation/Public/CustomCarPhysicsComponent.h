@@ -9,13 +9,13 @@
 class UProceduralMeshComponent;
 class UStaticMeshComponent;
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FPhysicsState
 {
     GENERATED_BODY()
 
-    FVector Velocity = FVector::ZeroVector;
-    FVector AngularVelocity = FVector::ZeroVector;
+    UPROPERTY(BlueprintReadOnly) FVector Velocity = FVector::ZeroVector;
+    UPROPERTY(BlueprintReadOnly) FVector AngularVelocity = FVector::ZeroVector;
 };
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -25,6 +25,9 @@ class DEFORMATION_API UCustomCarPhysicsComponent : public UActorComponent
 
 public:
     UCustomCarPhysicsComponent();
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Setup") FName VisualMeshTag = TEXT("VisualMesh");
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Setup") FName CollisionMeshTag = TEXT("CollisionMesh");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float Mass = 1200.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float FixedTimeStep = 1.0f / 60.0f;
@@ -36,8 +39,8 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Optimization") int32 MaxDeformationEventsPerFrame = 8;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Optimization") int32 MaxDirtyVerticesPerFrame = 5000;
 
-    UFUNCTION(BlueprintCallable, Category="Custom Physics")
-    void ApplyImpact(FVector Point, FVector Normal, float Force);
+    UFUNCTION(BlueprintCallable, Category="Custom Physics") void ApplyImpact(FVector Point, FVector Normal, float Force);
+    UFUNCTION(BlueprintCallable, Category="Custom Physics") bool InitializeFromTaggedMeshes();
 
 protected:
     virtual void BeginPlay() override;
@@ -54,8 +57,10 @@ private:
     FCollisionBroadPhase BroadPhase;
 
     UPROPERTY() UStaticMeshComponent* VisualMesh = nullptr;
+    UPROPERTY() UStaticMeshComponent* CollisionSourceMesh = nullptr;
     UPROPERTY() UProceduralMeshComponent* RuntimeMesh = nullptr;
 
+    bool ExtractMeshData(UStaticMeshComponent* Source, TArray<FVector>& OutVertices, TArray<int32>& OutTriangles) const;
     void BuildRuntimeMeshFromStatic();
     void UpdateRuntimeMesh(bool bFullRebuildNormals);
 
