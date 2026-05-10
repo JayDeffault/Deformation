@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 
+class AActor;
+
 struct FBroadPhaseBody
 {
     TWeakObjectPtr<AActor> Owner;

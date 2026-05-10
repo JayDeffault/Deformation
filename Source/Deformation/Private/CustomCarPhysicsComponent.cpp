@@ -72,7 +72,7 @@ void UCustomCarPhysicsComponent::ApplyImpact(FVector Point, FVector Normal, floa
     Event.Radius = DeformRadius;
     DeformationQueue.Add(Event);
 
-    FCollisionSolver::ResolveImpulse(PhysicsState.Velocity, PhysicsState.AngularVelocity, Mass, FVector(350000), Point - GetOwner()->GetActorLocation(), Normal, Force * 0.001f, Restitution);
+    FCollisionSolver::ResolveImpulse(PhysicsState.Velocity, PhysicsState.AngularVelocity, Mass, FVector(350000.0f, 350000.0f, 350000.0f), Point - GetOwner()->GetActorLocation(), Normal, Force * 0.001f, Restitution);
 }
 
 bool UCustomCarPhysicsComponent::ExtractMeshData(UStaticMeshComponent* Source, TArray<FVector>& OutVertices, TArray<int32>& OutTriangles) const
@@ -143,7 +143,10 @@ void UCustomCarPhysicsComponent::UpdateRuntimeMesh(bool bFullRebuildNormals)
 void UCustomCarPhysicsComponent::SimulateFixedStep(float Dt)
 {
     const FBox LocalBounds = ConvexMesh.GetLocalBounds();
-    if (LocalBounds.IsValid) ProxyHalfExtents = LocalBounds.GetExtent().GetAbs();
+    if (LocalBounds.IsValid)
+    {
+        ProxyHalfExtents = LocalBounds.GetExtent().GetAbs();
+    }
 
     HandleWorldCollision();
     HandleCarCollisions();
