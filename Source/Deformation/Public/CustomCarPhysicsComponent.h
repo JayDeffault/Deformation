@@ -33,6 +33,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float FixedTimeStep = 1.0f / 60.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") FVector ProxyHalfExtents = FVector(120.0f, 60.0f, 40.0f);
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float Restitution = 0.1f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundSnapTolerance = 2.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float PositionalCorrectionFactor = 0.6f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float MaxLinearSpeed = 6000.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float DeformRadius = 50.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float MaxDeform = 8.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float MinImpactSpeedForDeformation = 120.0f;

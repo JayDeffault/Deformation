@@ -175,6 +175,9 @@ void UCustomCarPhysicsComponent::IntegrateMovement(float Dt)
 {
     if (!GetOwner()) return;
     PhysicsState.Velocity += FVector(0, 0, -980.0f) * Dt;
+    PhysicsState.Velocity = PhysicsState.Velocity.GetClampedToMaxSize(MaxLinearSpeed);
+    PhysicsState.AngularVelocity *= 0.995f;
+
     const FVector Position = GetOwner()->GetActorLocation() + PhysicsState.Velocity * Dt;
     const FRotator Rotation = GetOwner()->GetActorRotation() + FRotator::MakeFromEuler(PhysicsState.AngularVelocity * Dt);
     GetOwner()->SetActorLocationAndRotation(Position, Rotation);
@@ -195,15 +198,26 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
             ApplyImpact(Hit.ImpactPoint, Hit.ImpactNormal, ImpactForce);
         }
 
-        // Базовая стабилизация против "проваливания" под землю.
-        const float PushOut = FMath::Max(Hit.PenetrationDepth, 2.0f);
-        GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * PushOut, false);
+        // Стабилизация контакта: мягкая коррекция позиции + подавление отскока на малых скоростях.
+        const float PenDepth = FMath::Max(0.0f, Hit.PenetrationDepth - GroundSnapTolerance);
+        if (PenDepth > 0.0f)
+        {
+            GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * PenDepth * PositionalCorrectionFactor, false);
+        }
 
         const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
         if (VN < 0.0f)
         {
+            // Убираем скорость в поверхность, оставляем касательную составляющую.
             PhysicsState.Velocity -= Hit.ImpactNormal * VN;
-            PhysicsState.Velocity *= 0.95f;
+
+            // На земле (почти вертикальная нормаль) гасим остаточный Z, чтобы не было "дребезга".
+            if (Hit.ImpactNormal.Z > 0.6f && FMath::Abs(PhysicsState.Velocity.Z) < 120.0f)
+            {
+                PhysicsState.Velocity.Z = 0.0f;
+            }
+
+            PhysicsState.Velocity *= 0.98f;
         }
     }
 }
