@@ -1,0 +1,22 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0.0",
+  "FriendlyName": "Deformation",
+  "Description": "Custom car physics and runtime mesh deformation plugin.",
+  "Category": "Physics",
+  "CreatedBy": "Codex",
+  "Modules": [
+    {
+      "Name": "Deformation",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "ProceduralMeshComponent",
+      "Enabled": true
+    }
+  ]
+}
