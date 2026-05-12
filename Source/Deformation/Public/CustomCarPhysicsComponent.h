@@ -41,6 +41,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float LinearDamping = 0.8f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundFriction = 4.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float SleepSpeedThreshold = 5.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float MinUpDotForGrounded = 0.75f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float DeformRadius = 50.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float MaxDeform = 8.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float MinImpactSpeedForDeformation = 120.0f;

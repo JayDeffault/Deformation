@@ -245,7 +245,11 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         }
 
 
-        if (Hit.ImpactNormal.Z > 0.65f)
+        const FVector ActorUp = GetOwner()->GetActorUpVector();
+        const float UpDot = FVector::DotProduct(ActorUp, FVector::UpVector);
+        const bool bContactBelowCOM = Hit.ImpactPoint.Z < (GetOwner()->GetActorLocation().Z - 5.0f);
+
+        if (Hit.ImpactNormal.Z > 0.65f && UpDot > MinUpDotForGrounded && bContactBelowCOM)
         {
             bGrounded = true;
             FVector Horizontal = FVector(PhysicsState.Velocity.X, PhysicsState.Velocity.Y, 0.0f);
