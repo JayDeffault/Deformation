@@ -10,6 +10,7 @@
 UCustomCarPhysicsComponent::UCustomCarPhysicsComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bRunOnAnyThread = false; // Явно отключаем async tick.
 }
 
 void UCustomCarPhysicsComponent::BeginPlay()
@@ -191,7 +192,16 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
     const FVector CenterWS = GetOwner()->GetActorTransform().TransformPosition(ProxyLocalCenter);
     const FVector Start = CenterWS;
     const FVector End = Start + PhysicsState.Velocity * 0.05f;
-    if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeBox(ProxyHalfExtents)))
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(CustomCarWorldSweep), false, GetOwner());
+    const FCollisionObjectQueryParams ObjMask(
+        ECC_TO_BITFIELD(ECC_WorldStatic) |
+        ECC_TO_BITFIELD(ECC_WorldDynamic) |
+        ECC_TO_BITFIELD(ECC_Pawn) |
+        ECC_TO_BITFIELD(ECC_PhysicsBody) |
+        ECC_TO_BITFIELD(ECC_Vehicle) |
+        ECC_TO_BITFIELD(ECC_Destructible));
+
+    if (GetWorld()->SweepSingleByObjectType(Hit, Start, End, FQuat::Identity, ObjMask, FCollisionShape::MakeBox(ProxyHalfExtents), QueryParams))
     {
         const float ImpactForce = FMath::Max(Hit.PenetrationDepth * 700.0f, PhysicsState.Velocity.Size());
         if (PhysicsState.Velocity.Size() > MinImpactSpeedForDeformation || Hit.PenetrationDepth > 3.0f)
