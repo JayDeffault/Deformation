@@ -164,6 +164,7 @@ void UCustomCarPhysicsComponent::SimulateFixedStep(float Dt)
     if (LocalBounds.IsValid)
     {
         ProxyHalfExtents = LocalBounds.GetExtent().GetAbs();
+        ProxyLocalCenter = LocalBounds.GetCenter();
     }
 
     HandleWorldCollision();
@@ -189,7 +190,8 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
     if (!GetOwner()) return;
 
     FHitResult Hit;
-    const FVector Start = GetOwner()->GetActorLocation();
+    const FVector CenterWS = GetOwner()->GetActorTransform().TransformPosition(ProxyLocalCenter);
+    const FVector Start = CenterWS;
     const FVector End = Start + PhysicsState.Velocity * 0.05f;
     if (GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeBox(ProxyHalfExtents)))
     {
@@ -210,14 +212,16 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         }
 
         // Стабилизация контакта: мягкая коррекция позиции + подавление отскока на малых скоростях.
+        const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
+
+        // Корректируем позицию только при реальном проникновении в поверхность.
         const float PenDepth = FMath::Max(0.0f, Hit.PenetrationDepth - GroundSnapTolerance);
-        if (PenDepth > 0.0f)
+        if (PenDepth > 0.01f)
         {
             GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * PenDepth * PositionalCorrectionFactor, false);
         }
 
-        const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
-        if (VN < 0.0f)
+        if (VN < -1.0f)
         {
             // Убираем скорость в поверхность, оставляем касательную составляющую.
             PhysicsState.Velocity -= Hit.ImpactNormal * VN;
@@ -293,5 +297,13 @@ void UCustomCarPhysicsComponent::ProcessDeformationQueue()
     }
 
     ConvexMesh.BuildSpatialHash(20.0f);
+
+    const FBox UpdatedBounds = ConvexMesh.GetLocalBounds();
+    if (UpdatedBounds.IsValid)
+    {
+        ProxyHalfExtents = UpdatedBounds.GetExtent().GetAbs();
+        ProxyLocalCenter = UpdatedBounds.GetCenter();
+    }
+
     DeformationQueue.Reset();
 }
