@@ -56,7 +56,8 @@ private:
     float TimeAccumulator = 0.0f;
     FPhysicsState PhysicsState;
 
-    FCustomConvexMesh ConvexMesh;
+    FCustomConvexMesh PhysicsMesh;
+    FCustomConvexMesh VisualDeformMesh;
     TArray<FVector> CachedNormals;
     TSet<int32> DirtyVertices;
     TArray<FDeformationEvent> DeformationQueue;

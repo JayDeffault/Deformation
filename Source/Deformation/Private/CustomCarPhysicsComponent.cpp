@@ -125,13 +125,12 @@ void UCustomCarPhysicsComponent::BuildRuntimeMeshFromStatic()
         CollisionTriangles = Triangles;
     }
 
-    ConvexMesh.Initialize(CollisionVertices, CollisionTriangles);
-    ConvexMesh.BuildSpatialHash(20.0f);
+    PhysicsMesh.Initialize(CollisionVertices, CollisionTriangles);
+    PhysicsMesh.BuildSpatialHash(20.0f);
 
-    // Нормали для визуального меша считаем по визуальным данным, чтобы отображение было корректным.
-    ConvexMesh.Vertices = Vertices;
-    ConvexMesh.Triangles = Triangles;
-    ConvexMesh.RecalculateNormalsAll(CachedNormals);
+    VisualDeformMesh.Initialize(Vertices, Triangles);
+    VisualDeformMesh.BuildSpatialHash(20.0f);
+    VisualDeformMesh.RecalculateNormalsAll(CachedNormals);
 
     RuntimeMesh = NewObject<UProceduralMeshComponent>(GetOwner(), TEXT("DeformationRuntimeMesh"));
     RuntimeMesh->SetupAttachment(VisualMesh);
@@ -145,22 +144,22 @@ void UCustomCarPhysicsComponent::UpdateRuntimeMesh(bool bFullRebuildNormals)
 {
     if (!RuntimeMesh) return;
 
-    if (bFullRebuildNormals) ConvexMesh.RecalculateNormalsAll(CachedNormals);
-    else if (DirtyVertices.Num() > 0) ConvexMesh.RecalculateNormalsPartial(DirtyVertices, CachedNormals);
+    if (bFullRebuildNormals) VisualDeformMesh.RecalculateNormalsAll(CachedNormals);
+    else if (DirtyVertices.Num() > 0) VisualDeformMesh.RecalculateNormalsPartial(DirtyVertices, CachedNormals);
 
-    TArray<FVector2D> UV0; UV0.Init(FVector2D::ZeroVector, ConvexMesh.Vertices.Num());
-    TArray<FColor> Colors; Colors.Init(FColor::White, ConvexMesh.Vertices.Num());
-    TArray<FProcMeshTangent> Tangents; Tangents.Init(FProcMeshTangent(1,0,0), ConvexMesh.Vertices.Num());
+    TArray<FVector2D> UV0; UV0.Init(FVector2D::ZeroVector, VisualDeformMesh.Vertices.Num());
+    TArray<FColor> Colors; Colors.Init(FColor::White, VisualDeformMesh.Vertices.Num());
+    TArray<FProcMeshTangent> Tangents; Tangents.Init(FProcMeshTangent(1,0,0), VisualDeformMesh.Vertices.Num());
 
-    if (!RuntimeMesh->GetProcMeshSection(0)) RuntimeMesh->CreateMeshSection(0, ConvexMesh.Vertices, ConvexMesh.Triangles, CachedNormals, UV0, Colors, Tangents, true);
-    else if (DirtyVertices.Num() > 0) RuntimeMesh->UpdateMeshSection(0, ConvexMesh.Vertices, CachedNormals, UV0, Colors, Tangents);
+    if (!RuntimeMesh->GetProcMeshSection(0)) RuntimeMesh->CreateMeshSection(0, VisualDeformMesh.Vertices, VisualDeformMesh.Triangles, CachedNormals, UV0, Colors, Tangents, true);
+    else if (DirtyVertices.Num() > 0) RuntimeMesh->UpdateMeshSection(0, VisualDeformMesh.Vertices, CachedNormals, UV0, Colors, Tangents);
 
     DirtyVertices.Reset();
 }
 
 void UCustomCarPhysicsComponent::SimulateFixedStep(float Dt)
 {
-    const FBox LocalBounds = ConvexMesh.GetLocalBounds();
+    const FBox LocalBounds = PhysicsMesh.GetLocalBounds();
     if (LocalBounds.IsValid)
     {
         ProxyHalfExtents = LocalBounds.GetExtent().GetAbs();
@@ -259,7 +258,7 @@ void UCustomCarPhysicsComponent::HandleCarCollisions()
     for (UCustomCarPhysicsComponent* C : Cars)
     {
         FBroadPhaseBody B; B.Owner = C->GetOwner();
-        B.WorldAABB = C->ConvexMesh.GetLocalBounds().TransformBy(C->GetOwner()->GetActorTransform());
+        B.WorldAABB = C->PhysicsMesh.GetLocalBounds().TransformBy(C->GetOwner()->GetActorTransform());
         Bodies.Add(B);
     }
 
@@ -273,8 +272,8 @@ void UCustomCarPhysicsComponent::HandleCarCollisions()
         if (AComp != this) continue;
 
         const FCollisionContact Contact = FCollisionSolver::SolveConvexSAT(
-            FProxyConvex{AComp->GetOwner()->GetActorTransform(), AComp->ConvexMesh.Vertices},
-            FProxyConvex{BComp->GetOwner()->GetActorTransform(), BComp->ConvexMesh.Vertices});
+            FProxyConvex{AComp->GetOwner()->GetActorTransform(), AComp->PhysicsMesh.Vertices},
+            FProxyConvex{BComp->GetOwner()->GetActorTransform(), BComp->PhysicsMesh.Vertices});
 
         if (Contact.bHasContact) ApplyImpact(Contact.Point, Contact.Normal, Contact.PenetrationDepth * 1200.0f);
     }
@@ -288,17 +287,22 @@ void UCustomCarPhysicsComponent::ProcessDeformationQueue()
     for (int32 EvtIdx = 0; EvtIdx < EventCount; ++EvtIdx)
     {
         TArray<int32> Dirty;
-        ConvexMesh.ApplyDeformationEvent(DeformationQueue[EvtIdx], MaxDeform, Dirty);
-        for (int32 Idx : Dirty)
+        PhysicsMesh.ApplyDeformationEvent(DeformationQueue[EvtIdx], MaxDeform, Dirty);
+
+        TArray<int32> VisualDirty;
+        VisualDeformMesh.ApplyDeformationEvent(DeformationQueue[EvtIdx], MaxDeform, VisualDirty);
+
+        for (int32 Idx : VisualDirty)
         {
             if (DirtyVertices.Num() >= MaxDirtyVerticesPerFrame) break;
             DirtyVertices.Add(Idx);
         }
     }
 
-    ConvexMesh.BuildSpatialHash(20.0f);
+    PhysicsMesh.BuildSpatialHash(20.0f);
+    VisualDeformMesh.BuildSpatialHash(20.0f);
 
-    const FBox UpdatedBounds = ConvexMesh.GetLocalBounds();
+    const FBox UpdatedBounds = PhysicsMesh.GetLocalBounds();
     if (UpdatedBounds.IsValid)
     {
         ProxyHalfExtents = UpdatedBounds.GetExtent().GetAbs();
