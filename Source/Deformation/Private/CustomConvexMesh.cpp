@@ -106,3 +106,43 @@ void FCustomConvexMesh::GatherVerticesInRadius(const FVector& Center, float Radi
         }
     }
 }
+
+
+FVector FCustomConvexMesh::GetSupportPoint(const FVector& Direction) const
+{
+    if (Vertices.Num() == 0) return FVector::ZeroVector;
+
+    const FVector Dir = Direction.GetSafeNormal();
+    float BestDot = -TNumericLimits<float>::Max();
+    FVector Best = Vertices[0];
+
+    for (const FVector& V : Vertices)
+    {
+        const float D = FVector::DotProduct(V, Dir);
+        if (D > BestDot)
+        {
+            BestDot = D;
+            Best = V;
+        }
+    }
+
+    return Best;
+}
+
+void FCustomConvexMesh::GetWorldVertices(const FTransform& LocalToWorld, TArray<FVector>& OutVertices) const
+{
+    OutVertices.Reset();
+    OutVertices.Reserve(Vertices.Num());
+    for (const FVector& V : Vertices)
+    {
+        OutVertices.Add(LocalToWorld.TransformPosition(V));
+    }
+}
+
+void FCustomConvexMesh::TranslateVertices(const FVector& Delta)
+{
+    for (FVector& V : Vertices)
+    {
+        V += Delta;
+    }
+}

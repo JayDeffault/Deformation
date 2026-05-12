@@ -22,6 +22,11 @@ public:
     void RecalculateNormalsPartial(const TSet<int32>& DirtyVertices, TArray<FVector>& InOutNormals) const;
     void RecalculateNormalsAll(TArray<FVector>& OutNormals) const;
     FBox GetLocalBounds() const;
+    // Низкоуровневый доступ для динамической convex-коллизии без recook.
+    FVector GetSupportPoint(const FVector& Direction) const;
+    void GetWorldVertices(const FTransform& LocalToWorld, TArray<FVector>& OutVertices) const;
+    void TranslateVertices(const FVector& Delta);
+
 
 private:
     TMap<FIntVector, TArray<int32>> SpatialHash;
