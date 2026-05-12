@@ -166,6 +166,7 @@ void UCustomCarPhysicsComponent::SimulateFixedStep(float Dt)
         ProxyLocalCenter = LocalBounds.GetCenter();
     }
 
+    bGrounded = false;
     HandleWorldCollision();
     HandleCarCollisions();
     IntegrateMovement(Dt);
@@ -174,7 +175,13 @@ void UCustomCarPhysicsComponent::SimulateFixedStep(float Dt)
 void UCustomCarPhysicsComponent::IntegrateMovement(float Dt)
 {
     if (!GetOwner()) return;
-    PhysicsState.Velocity += FVector(0, 0, -980.0f) * Dt;
+    if (!bGrounded)
+    {
+        PhysicsState.Velocity += FVector(0, 0, -980.0f) * Dt;
+    }
+
+    const float DampingFactor = FMath::Clamp(1.0f - LinearDamping * Dt, 0.0f, 1.0f);
+    PhysicsState.Velocity *= DampingFactor;
     PhysicsState.Velocity = PhysicsState.Velocity.GetClampedToMaxSize(MaxLinearSpeed);
     PhysicsState.AngularVelocity *= 0.97f;
     PhysicsState.AngularVelocity = PhysicsState.AngularVelocity.GetClampedToMaxSize(2.5f);
@@ -235,6 +242,22 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         if (PenDepth > 0.01f)
         {
             GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * PenDepth * PositionalCorrectionFactor, false);
+        }
+
+
+        if (Hit.ImpactNormal.Z > 0.65f)
+        {
+            bGrounded = true;
+            FVector Horizontal = FVector(PhysicsState.Velocity.X, PhysicsState.Velocity.Y, 0.0f);
+            Horizontal *= FMath::Clamp(1.0f - GroundFriction * FixedTimeStep, 0.0f, 1.0f);
+            PhysicsState.Velocity.X = Horizontal.X;
+            PhysicsState.Velocity.Y = Horizontal.Y;
+
+            if (PhysicsState.Velocity.Size() < SleepSpeedThreshold)
+            {
+                PhysicsState.Velocity = FVector::ZeroVector;
+                PhysicsState.AngularVelocity *= 0.8f;
+            }
         }
 
         if (VN < -1.0f)

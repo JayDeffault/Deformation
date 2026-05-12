@@ -38,6 +38,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float PositionalCorrectionFactor = 0.6f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float MaxLinearSpeed = 6000.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GravityTorqueScale = 0.0000025f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float LinearDamping = 0.8f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundFriction = 4.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float SleepSpeedThreshold = 5.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float DeformRadius = 50.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float MaxDeform = 8.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float MinImpactSpeedForDeformation = 120.0f;
@@ -56,6 +59,7 @@ protected:
 private:
     float TimeAccumulator = 0.0f;
     FPhysicsState PhysicsState;
+    bool bGrounded = false;
 
     // Authoritative deformable physics mesh.
     FCustomConvexMesh PhysicsMesh;
