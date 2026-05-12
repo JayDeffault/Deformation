@@ -176,7 +176,8 @@ void UCustomCarPhysicsComponent::IntegrateMovement(float Dt)
     if (!GetOwner()) return;
     PhysicsState.Velocity += FVector(0, 0, -980.0f) * Dt;
     PhysicsState.Velocity = PhysicsState.Velocity.GetClampedToMaxSize(MaxLinearSpeed);
-    PhysicsState.AngularVelocity *= 0.995f;
+    PhysicsState.AngularVelocity *= 0.97f;
+    PhysicsState.AngularVelocity = PhysicsState.AngularVelocity.GetClampedToMaxSize(2.5f);
 
     const FVector Position = GetOwner()->GetActorLocation() + PhysicsState.Velocity * Dt;
     const FRotator Rotation = GetOwner()->GetActorRotation() + FRotator::MakeFromEuler(PhysicsState.AngularVelocity * Dt);
@@ -195,7 +196,17 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         const float ImpactForce = FMath::Max(Hit.PenetrationDepth * 700.0f, PhysicsState.Velocity.Size());
         if (PhysicsState.Velocity.Size() > MinImpactSpeedForDeformation || Hit.PenetrationDepth > 3.0f)
         {
-            ApplyImpact(Hit.ImpactPoint, Hit.ImpactNormal, ImpactForce);
+            // Для контакта с землёй избегаем крутящего импульса, чтобы не было неконтролируемого спина.
+            const FTransform WorldToLocal = GetOwner()->GetActorTransform().Inverse();
+            FDeformationEvent Event;
+            Event.LocalPoint = WorldToLocal.TransformPosition(Hit.ImpactPoint);
+            Event.LocalNormal = WorldToLocal.TransformVectorNoScale(Hit.ImpactNormal).GetSafeNormal();
+            Event.Force = ImpactForce;
+            Event.Radius = DeformRadius;
+            if (Event.Force >= MinImpactForceForDeformation)
+            {
+                DeformationQueue.Add(Event);
+            }
         }
 
         // Стабилизация контакта: мягкая коррекция позиции + подавление отскока на малых скоростях.
@@ -218,6 +229,11 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
             }
 
             PhysicsState.Velocity *= 0.98f;
+
+            if (Hit.ImpactNormal.Z > 0.6f)
+            {
+                PhysicsState.AngularVelocity *= 0.5f;
+            }
         }
     }
 }
