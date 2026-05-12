@@ -128,9 +128,8 @@ void UCustomCarPhysicsComponent::BuildRuntimeMeshFromStatic()
     PhysicsMesh.Initialize(CollisionVertices, CollisionTriangles);
     PhysicsMesh.BuildSpatialHash(20.0f);
 
-    VisualDeformMesh.Initialize(Vertices, Triangles);
-    VisualDeformMesh.BuildSpatialHash(20.0f);
-    VisualDeformMesh.RecalculateNormalsAll(CachedNormals);
+    // Визуал полностью синхронизируется с физической деформируемой сеткой.
+    PhysicsMesh.RecalculateNormalsAll(CachedNormals);
 
     RuntimeMesh = NewObject<UProceduralMeshComponent>(GetOwner(), TEXT("DeformationRuntimeMesh"));
     RuntimeMesh->SetupAttachment(VisualMesh);
@@ -144,15 +143,15 @@ void UCustomCarPhysicsComponent::UpdateRuntimeMesh(bool bFullRebuildNormals)
 {
     if (!RuntimeMesh) return;
 
-    if (bFullRebuildNormals) VisualDeformMesh.RecalculateNormalsAll(CachedNormals);
-    else if (DirtyVertices.Num() > 0) VisualDeformMesh.RecalculateNormalsPartial(DirtyVertices, CachedNormals);
+    if (bFullRebuildNormals) PhysicsMesh.RecalculateNormalsAll(CachedNormals);
+    else if (DirtyVertices.Num() > 0) PhysicsMesh.RecalculateNormalsPartial(DirtyVertices, CachedNormals);
 
-    TArray<FVector2D> UV0; UV0.Init(FVector2D::ZeroVector, VisualDeformMesh.Vertices.Num());
-    TArray<FColor> Colors; Colors.Init(FColor::White, VisualDeformMesh.Vertices.Num());
-    TArray<FProcMeshTangent> Tangents; Tangents.Init(FProcMeshTangent(1,0,0), VisualDeformMesh.Vertices.Num());
+    TArray<FVector2D> UV0; UV0.Init(FVector2D::ZeroVector, PhysicsMesh.Vertices.Num());
+    TArray<FColor> Colors; Colors.Init(FColor::White, PhysicsMesh.Vertices.Num());
+    TArray<FProcMeshTangent> Tangents; Tangents.Init(FProcMeshTangent(1,0,0), PhysicsMesh.Vertices.Num());
 
-    if (!RuntimeMesh->GetProcMeshSection(0)) RuntimeMesh->CreateMeshSection(0, VisualDeformMesh.Vertices, VisualDeformMesh.Triangles, CachedNormals, UV0, Colors, Tangents, true);
-    else if (DirtyVertices.Num() > 0) RuntimeMesh->UpdateMeshSection(0, VisualDeformMesh.Vertices, CachedNormals, UV0, Colors, Tangents);
+    if (!RuntimeMesh->GetProcMeshSection(0)) RuntimeMesh->CreateMeshSection(0, PhysicsMesh.Vertices, PhysicsMesh.Triangles, CachedNormals, UV0, Colors, Tangents, true);
+    else if (DirtyVertices.Num() > 0) RuntimeMesh->UpdateMeshSection(0, PhysicsMesh.Vertices, CachedNormals, UV0, Colors, Tangents);
 
     DirtyVertices.Reset();
 }
@@ -289,10 +288,7 @@ void UCustomCarPhysicsComponent::ProcessDeformationQueue()
         TArray<int32> Dirty;
         PhysicsMesh.ApplyDeformationEvent(DeformationQueue[EvtIdx], MaxDeform, Dirty);
 
-        TArray<int32> VisualDirty;
-        VisualDeformMesh.ApplyDeformationEvent(DeformationQueue[EvtIdx], MaxDeform, VisualDirty);
-
-        for (int32 Idx : VisualDirty)
+        for (int32 Idx : Dirty)
         {
             if (DirtyVertices.Num() >= MaxDirtyVerticesPerFrame) break;
             DirtyVertices.Add(Idx);
@@ -300,7 +296,6 @@ void UCustomCarPhysicsComponent::ProcessDeformationQueue()
     }
 
     PhysicsMesh.BuildSpatialHash(20.0f);
-    VisualDeformMesh.BuildSpatialHash(20.0f);
 
     const FBox UpdatedBounds = PhysicsMesh.GetLocalBounds();
     if (UpdatedBounds.IsValid)

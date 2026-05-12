@@ -56,8 +56,9 @@ private:
     float TimeAccumulator = 0.0f;
     FPhysicsState PhysicsState;
 
+    // Authoritative deformable physics mesh.
     FCustomConvexMesh PhysicsMesh;
-    FCustomConvexMesh VisualDeformMesh;
+    // Runtime visual mesh is synced directly from PhysicsMesh each frame.
     TArray<FVector> CachedNormals;
     TSet<int32> DirtyVertices;
     TArray<FDeformationEvent> DeformationQueue;
