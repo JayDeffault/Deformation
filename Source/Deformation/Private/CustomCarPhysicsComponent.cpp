@@ -221,6 +221,13 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         }
 
         // Стабилизация контакта: мягкая коррекция позиции + подавление отскока на малых скоростях.
+
+        // Если опора смещена от центра масс (край платформы), добавляем опрокидывающий момент.
+        const FVector Lever = Hit.ImpactPoint - GetOwner()->GetActorLocation();
+        const FVector GravityForce = FVector(0, 0, -980.0f * Mass);
+        const FVector GravityTorque = FVector::CrossProduct(Lever, GravityForce) * GravityTorqueScale;
+        PhysicsState.AngularVelocity += GravityTorque;
+
         const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
 
         // Корректируем позицию только при реальном проникновении в поверхность.
