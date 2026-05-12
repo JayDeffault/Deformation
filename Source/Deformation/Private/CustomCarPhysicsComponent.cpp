@@ -50,12 +50,7 @@ void UCustomCarPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickT
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     if (!RuntimeMesh) return;
 
-    TimeAccumulator += DeltaTime;
-    while (TimeAccumulator >= FixedTimeStep)
-    {
-        SimulateFixedStep(FixedTimeStep);
-        TimeAccumulator -= FixedTimeStep;
-    }
+    SimulateFixedStep(DeltaTime);
 
     ProcessDeformationQueue();
     UpdateRuntimeMesh(false);
@@ -253,7 +248,8 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         {
             bGrounded = true;
             FVector Horizontal = FVector(PhysicsState.Velocity.X, PhysicsState.Velocity.Y, 0.0f);
-            Horizontal *= FMath::Clamp(1.0f - GroundFriction * FixedTimeStep, 0.0f, 1.0f);
+            const float StepDt = FMath::Max(GetWorld()->GetDeltaSeconds(), 1.0f / 240.0f);
+            Horizontal *= FMath::Clamp(1.0f - GroundFriction * StepDt, 0.0f, 1.0f);
             PhysicsState.Velocity.X = Horizontal.X;
             PhysicsState.Velocity.Y = Horizontal.Y;
 

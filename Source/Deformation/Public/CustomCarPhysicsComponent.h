@@ -30,7 +30,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Setup") FName CollisionMeshTag = TEXT("CollisionMesh");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float Mass = 1200.0f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float FixedTimeStep = 1.0f / 60.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") FVector ProxyHalfExtents = FVector(120.0f, 60.0f, 40.0f);
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Custom Physics") FVector ProxyLocalCenter = FVector::ZeroVector;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float Restitution = 0.1f;
@@ -58,7 +57,6 @@ protected:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
-    float TimeAccumulator = 0.0f;
     FPhysicsState PhysicsState;
     bool bGrounded = false;
 
