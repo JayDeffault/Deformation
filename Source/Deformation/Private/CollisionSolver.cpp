@@ -98,10 +98,14 @@ void FCollisionSolver::ResolveImpulse(FVector& InOutVelocity, FVector& InOutAngu
     const FVector Impulse = J * ContactNormalWS;
 
     InOutVelocity += Impulse * InvMass;
-    InOutAngularVelocity += FVector(
-        Impulse.X / FMath::Max(InertiaDiagonal.X, 1.0f),
-        Impulse.Y / FMath::Max(InertiaDiagonal.Y, 1.0f),
-        Impulse.Z / FMath::Max(InertiaDiagonal.Z, 1.0f));
 
-    InOutVelocity += ContactNormalWS * PenetrationDepth * 0.35f;
+    // Правильный угловой отклик: dW = I^-1 * (r x J)
+    const FVector TorqueImpulse = FVector::CrossProduct(ContactPointWS, Impulse);
+    InOutAngularVelocity += FVector(
+        TorqueImpulse.X / FMath::Max(InertiaDiagonal.X, 1.0f),
+        TorqueImpulse.Y / FMath::Max(InertiaDiagonal.Y, 1.0f),
+        TorqueImpulse.Z / FMath::Max(InertiaDiagonal.Z, 1.0f));
+
+    // Коррекция проникновения только по нормали, без бокового bias.
+    InOutVelocity += ContactNormalWS * FMath::Max(PenetrationDepth, 0.0f) * 0.2f;
 }
