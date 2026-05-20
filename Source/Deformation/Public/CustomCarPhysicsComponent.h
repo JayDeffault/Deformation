@@ -37,8 +37,8 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float PositionalCorrectionFactor = 0.6f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float MaxLinearSpeed = 6000.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GravityTorqueScale = 0.0000025f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float LinearDamping = 0.8f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundFriction = 4.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float LinearDamping = 1.8f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundFriction = 8.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float SleepSpeedThreshold = 5.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float MinUpDotForGrounded = 0.75f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Deformation") float DeformRadius = 50.0f;
@@ -76,7 +76,7 @@ private:
     void BuildRuntimeMeshFromStatic();
     void UpdateRuntimeMesh(bool bFullRebuildNormals);
 
-    void SimulateFixedStep(float Dt);
+    void SimulateFrame(float Dt);
     void IntegrateMovement(float Dt);
     void HandleWorldCollision();
     void HandleCarCollisions();

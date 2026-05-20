@@ -50,7 +50,7 @@ void UCustomCarPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickT
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
     if (!RuntimeMesh) return;
 
-    SimulateFixedStep(DeltaTime);
+    SimulateFrame(DeltaTime);
 
     ProcessDeformationQueue();
     UpdateRuntimeMesh(false);
@@ -152,7 +152,7 @@ void UCustomCarPhysicsComponent::UpdateRuntimeMesh(bool bFullRebuildNormals)
     DirtyVertices.Reset();
 }
 
-void UCustomCarPhysicsComponent::SimulateFixedStep(float Dt)
+void UCustomCarPhysicsComponent::SimulateFrame(float Dt)
 {
     const FBox LocalBounds = PhysicsMesh.GetLocalBounds();
     if (LocalBounds.IsValid)
@@ -178,8 +178,9 @@ void UCustomCarPhysicsComponent::IntegrateMovement(float Dt)
     const float DampingFactor = FMath::Clamp(1.0f - LinearDamping * Dt, 0.0f, 1.0f);
     PhysicsState.Velocity *= DampingFactor;
     PhysicsState.Velocity = PhysicsState.Velocity.GetClampedToMaxSize(MaxLinearSpeed);
-    PhysicsState.AngularVelocity *= 0.97f;
-    PhysicsState.AngularVelocity = PhysicsState.AngularVelocity.GetClampedToMaxSize(2.5f);
+    const float AngularDamp = FMath::Clamp(1.0f - 4.0f * Dt, 0.0f, 1.0f);
+    PhysicsState.AngularVelocity *= AngularDamp;
+    PhysicsState.AngularVelocity = PhysicsState.AngularVelocity.GetClampedToMaxSize(1.5f);
 
     const FVector Position = GetOwner()->GetActorLocation() + PhysicsState.Velocity * Dt;
     const FRotator Rotation = GetOwner()->GetActorRotation() + FRotator::MakeFromEuler(PhysicsState.AngularVelocity * Dt);
@@ -236,7 +237,8 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         const float PenDepth = FMath::Max(0.0f, Hit.PenetrationDepth - GroundSnapTolerance);
         if (PenDepth > 0.01f)
         {
-            GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * PenDepth * PositionalCorrectionFactor, false);
+            const float Corr = FMath::Clamp(PositionalCorrectionFactor * 0.35f, 0.0f, 1.0f);
+            GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * PenDepth * Corr, false);
         }
 
 
