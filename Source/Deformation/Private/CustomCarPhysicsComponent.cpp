@@ -17,6 +17,10 @@ void UCustomCarPhysicsComponent::BeginPlay()
 {
     Super::BeginPlay();
     InitializeFromTaggedMeshes();
+    if (GetOwner())
+    {
+        PreviousActorLocation = GetOwner()->GetActorLocation();
+    }
 }
 
 bool UCustomCarPhysicsComponent::InitializeFromTaggedMeshes()
@@ -54,6 +58,10 @@ void UCustomCarPhysicsComponent::TickComponent(float DeltaTime, ELevelTick TickT
 
     ProcessDeformationQueue();
     UpdateRuntimeMesh(false);
+    if (GetOwner())
+    {
+        PreviousActorLocation = GetOwner()->GetActorLocation();
+    }
 }
 
 void UCustomCarPhysicsComponent::ApplyImpact(FVector Point, FVector Normal, float Force)
@@ -191,94 +199,71 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
 {
     if (!GetOwner()) return;
 
-    FHitResult Hit;
-    const FVector CenterWS = GetOwner()->GetActorTransform().TransformPosition(ProxyLocalCenter);
-    const FVector Start = CenterWS;
-    const FVector End = Start + PhysicsState.Velocity * 0.05f;
-    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(CustomCarWorldSweep), false, GetOwner());
-    const FCollisionObjectQueryParams ObjMask(
-        ECC_TO_BITFIELD(ECC_WorldStatic) |
-        ECC_TO_BITFIELD(ECC_WorldDynamic) |
-        ECC_TO_BITFIELD(ECC_Pawn) |
-        ECC_TO_BITFIELD(ECC_PhysicsBody) |
-        ECC_TO_BITFIELD(ECC_Vehicle) |
-        ECC_TO_BITFIELD(ECC_Destructible));
+    // Используем реальные вершины физического деформируемого меша для контактов с миром,
+    // чтобы не было "столкновений с воздухом" от грубого box-proxy.
+    TArray<FVector> WorldVerts;
+    PhysicsMesh.GetWorldVertices(GetOwner()->GetActorTransform(), WorldVerts);
+    if (WorldVerts.Num() == 0) return;
 
-    const FQuat ProxyRotation = GetOwner()->GetActorQuat();
-    if (GetWorld()->SweepSingleByObjectType(Hit, Start, End, ProxyRotation, ObjMask, FCollisionShape::MakeBox(ProxyHalfExtents), QueryParams))
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(CustomCarWorldVertexTrace), false, GetOwner());
+
+    const FVector Delta = GetOwner()->GetActorLocation() - PreviousActorLocation;
+    const FVector MoveDir = Delta.IsNearlyZero() ? FVector::DownVector : Delta.GetSafeNormal();
+
+    // Берём несколько support-точек по ключевым направлениям для устойчивой детекции.
+    const FVector LocalSupportMove = PhysicsMesh.GetSupportPoint(GetOwner()->GetActorTransform().InverseTransformVectorNoScale(MoveDir));
+    const FVector LocalSupportDown = PhysicsMesh.GetSupportPoint(GetOwner()->GetActorTransform().InverseTransformVectorNoScale(FVector::DownVector));
+    const FVector LocalSupportUp = PhysicsMesh.GetSupportPoint(GetOwner()->GetActorTransform().InverseTransformVectorNoScale(FVector::UpVector));
+
+    TArray<FVector> ProbePoints;
+    ProbePoints.Reserve(3);
+    ProbePoints.Add(GetOwner()->GetActorTransform().TransformPosition(LocalSupportMove));
+    ProbePoints.Add(GetOwner()->GetActorTransform().TransformPosition(LocalSupportDown));
+    ProbePoints.Add(GetOwner()->GetActorTransform().TransformPosition(LocalSupportUp));
+
+    for (const FVector& ProbeWS : ProbePoints)
     {
-        const float ImpactForce = FMath::Max(Hit.PenetrationDepth * 700.0f, PhysicsState.Velocity.Size());
-        if (PhysicsState.Velocity.Size() > MinImpactSpeedForDeformation || Hit.PenetrationDepth > 3.0f)
+        FHitResult Hit;
+        const FVector Start = ProbeWS - Delta;
+        const FVector End = ProbeWS;
+
+        if (GetWorld()->LineTraceSingleByObjectType(
+            Hit,
+            Start,
+            End,
+            FCollisionObjectQueryParams(
+                ECC_TO_BITFIELD(ECC_WorldStatic) |
+                ECC_TO_BITFIELD(ECC_WorldDynamic) |
+                ECC_TO_BITFIELD(ECC_Pawn) |
+                ECC_TO_BITFIELD(ECC_PhysicsBody) |
+                ECC_TO_BITFIELD(ECC_Vehicle) |
+                ECC_TO_BITFIELD(ECC_Destructible)),
+            QueryParams))
         {
-            // Для контакта с землёй избегаем крутящего импульса, чтобы не было неконтролируемого спина.
-            const FTransform WorldToLocal = GetOwner()->GetActorTransform().Inverse();
-            FDeformationEvent Event;
-            Event.LocalPoint = WorldToLocal.TransformPosition(Hit.ImpactPoint);
-            Event.LocalNormal = WorldToLocal.TransformVectorNoScale(Hit.ImpactNormal).GetSafeNormal();
-            Event.Force = ImpactForce;
-            Event.Radius = DeformRadius;
-            if (Event.Force >= MinImpactForceForDeformation)
+            const float ImpactForce = FMath::Max(Hit.PenetrationDepth * 700.0f, PhysicsState.Velocity.Size());
+            if (PhysicsState.Velocity.Size() > MinImpactSpeedForDeformation || Hit.PenetrationDepth > 0.5f)
             {
-                DeformationQueue.Add(Event);
-            }
-        }
-
-        // Стабилизация контакта: мягкая коррекция позиции + подавление отскока на малых скоростях.
-
-        // Если опора смещена от центра масс (край платформы), добавляем опрокидывающий момент.
-        const FVector Lever = Hit.ImpactPoint - GetOwner()->GetActorLocation();
-        const FVector GravityForce = FVector(0, 0, -980.0f * Mass);
-        const FVector GravityTorque = FVector::CrossProduct(Lever, GravityForce) * GravityTorqueScale;
-        PhysicsState.AngularVelocity += GravityTorque;
-
-        const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
-
-        // Корректируем позицию только при реальном проникновении в поверхность.
-        const float PenDepth = FMath::Max(0.0f, Hit.PenetrationDepth - GroundSnapTolerance);
-        if (PenDepth > 0.01f)
-        {
-            const float Corr = FMath::Clamp(PositionalCorrectionFactor * 0.35f, 0.0f, 1.0f);
-            GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * PenDepth * Corr, false);
-        }
-
-
-        const FVector ActorUp = GetOwner()->GetActorUpVector();
-        const float UpDot = FVector::DotProduct(ActorUp, FVector::UpVector);
-        const bool bContactBelowCOM = Hit.ImpactPoint.Z < (GetOwner()->GetActorLocation().Z - 5.0f);
-
-        if (Hit.ImpactNormal.Z > 0.65f && UpDot > MinUpDotForGrounded && bContactBelowCOM)
-        {
-            bGrounded = true;
-            FVector Horizontal = FVector(PhysicsState.Velocity.X, PhysicsState.Velocity.Y, 0.0f);
-            const float StepDt = FMath::Max(GetWorld()->GetDeltaSeconds(), 1.0f / 240.0f);
-            Horizontal *= FMath::Clamp(1.0f - GroundFriction * StepDt, 0.0f, 1.0f);
-            PhysicsState.Velocity.X = Horizontal.X;
-            PhysicsState.Velocity.Y = Horizontal.Y;
-
-            if (PhysicsState.Velocity.Size() < SleepSpeedThreshold)
-            {
-                PhysicsState.Velocity = FVector::ZeroVector;
-                PhysicsState.AngularVelocity *= 0.8f;
-            }
-        }
-
-        if (VN < -1.0f)
-        {
-            // Убираем скорость в поверхность, оставляем касательную составляющую.
-            PhysicsState.Velocity -= Hit.ImpactNormal * VN;
-
-            // На земле (почти вертикальная нормаль) гасим остаточный Z, чтобы не было "дребезга".
-            if (Hit.ImpactNormal.Z > 0.6f && FMath::Abs(PhysicsState.Velocity.Z) < 120.0f)
-            {
-                PhysicsState.Velocity.Z = 0.0f;
+                const FTransform WorldToLocal = GetOwner()->GetActorTransform().Inverse();
+                FDeformationEvent Event;
+                Event.LocalPoint = WorldToLocal.TransformPosition(Hit.ImpactPoint);
+                Event.LocalNormal = WorldToLocal.TransformVectorNoScale(Hit.ImpactNormal).GetSafeNormal();
+                Event.Force = ImpactForce;
+                Event.Radius = DeformRadius;
+                if (Event.Force >= MinImpactForceForDeformation)
+                {
+                    DeformationQueue.Add(Event);
+                }
             }
 
-            PhysicsState.Velocity *= 0.98f;
-
-            if (Hit.ImpactNormal.Z > 0.6f)
+            const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
+            if (VN < -1.0f)
             {
-                PhysicsState.AngularVelocity *= 0.5f;
+                PhysicsState.Velocity -= Hit.ImpactNormal * VN;
+                PhysicsState.Velocity *= 0.98f;
             }
+
+            bGrounded = bGrounded || (Hit.ImpactNormal.Z > 0.65f);
+            break;
         }
     }
 }

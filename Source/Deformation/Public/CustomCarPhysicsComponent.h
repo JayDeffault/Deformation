@@ -59,6 +59,7 @@ protected:
 private:
     FPhysicsState PhysicsState;
     bool bGrounded = false;
+    FVector PreviousActorLocation = FVector::ZeroVector;
 
     // Authoritative deformable physics mesh.
     FCustomConvexMesh PhysicsMesh;
