@@ -37,10 +37,13 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Custom Physics") FVector ProxyLocalCenter = FVector::ZeroVector;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float Restitution = 0.1f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundSnapTolerance = 2.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundProbeDistance = 120.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundContactOffset = 2.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") int32 MaxGroundProbeVertices = 24;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float PositionalCorrectionFactor = 0.6f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float MaxLinearSpeed = 6000.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GravityTorqueScale = 0.0000025f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float LinearDamping = 1.8f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float LinearDamping = 0.15f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundFriction = 8.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float SleepSpeedThreshold = 5.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float MinUpDotForGrounded = 0.75f;

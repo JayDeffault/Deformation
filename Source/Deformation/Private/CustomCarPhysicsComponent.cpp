@@ -215,7 +215,8 @@ void UCustomCarPhysicsComponent::IntegrateMovement(float Dt)
     }
 
     const float DampingFactor = FMath::Clamp(1.0f - LinearDamping * Dt, 0.0f, 1.0f);
-    PhysicsState.Velocity *= DampingFactor;
+    PhysicsState.Velocity.X *= DampingFactor;
+    PhysicsState.Velocity.Y *= DampingFactor;
     PhysicsState.Velocity = PhysicsState.Velocity.GetClampedToMaxSize(MaxLinearSpeed);
     const float AngularDamp = FMath::Clamp(1.0f - 4.0f * Dt, 0.0f, 1.0f);
     PhysicsState.AngularVelocity *= AngularDamp;
@@ -260,6 +261,7 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         }
     }
 
+    bool bHadWorldHit = false;
     for (const FVector& ProbeWS : ProbePoints)
     {
         FHitResult Hit;
@@ -302,6 +304,7 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
             }
 
             bGrounded = bGrounded || (Hit.ImpactNormal.Z > 0.65f);
+            bHadWorldHit = true;
 
             if (bDebugDraw)
             {
@@ -312,6 +315,66 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
             break;
         }
     }
+
+    // Дополнительные ground-probes по нижним деформированным вершинам: это заменяет recook для контакта с plane/землёй.
+    if (!bHadWorldHit && WorldVerts.Num() > 0)
+    {
+        WorldVerts.Sort([](const FVector& A, const FVector& B)
+        {
+            return A.Z < B.Z;
+        });
+
+        const int32 ProbeCount = FMath::Min(FMath::Max(MaxGroundProbeVertices, 1), WorldVerts.Num());
+        for (int32 Idx = 0; Idx < ProbeCount; ++Idx)
+        {
+            const FVector ProbeWS = WorldVerts[Idx];
+            FHitResult Hit;
+            const FVector Start = ProbeWS + FVector::UpVector * GroundContactOffset;
+            const FVector End = ProbeWS - FVector::UpVector * GroundProbeDistance;
+
+            if (GetWorld()->LineTraceSingleByObjectType(
+                Hit,
+                Start,
+                End,
+                FCollisionObjectQueryParams(
+                    ECC_TO_BITFIELD(ECC_WorldStatic) |
+                    ECC_TO_BITFIELD(ECC_WorldDynamic) |
+                    ECC_TO_BITFIELD(ECC_Pawn) |
+                    ECC_TO_BITFIELD(ECC_PhysicsBody) |
+                    ECC_TO_BITFIELD(ECC_Vehicle) |
+                    ECC_TO_BITFIELD(ECC_Destructible)),
+                QueryParams))
+            {
+                const float DistanceToSurface = (ProbeWS - Hit.ImpactPoint).Dot(Hit.ImpactNormal);
+                const float CorrectionDepth = GroundContactOffset - DistanceToSurface;
+                if (CorrectionDepth > 0.0f)
+                {
+                    GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * CorrectionDepth, false);
+                }
+
+                const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
+                if (VN < 0.0f)
+                {
+                    PhysicsState.Velocity -= Hit.ImpactNormal * VN;
+                }
+
+                bGrounded = Hit.ImpactNormal.Z > 0.65f;
+
+                if (bDebugDraw)
+                {
+                    DrawDebugLine(GetWorld(), Start, End, FColor::Blue, false, 0.05f, 0, 0.5f);
+                    DrawDebugPoint(GetWorld(), Hit.ImpactPoint, 10.0f, FColor::Red, false, 0.05f);
+                    DrawDebugLine(GetWorld(), Hit.ImpactPoint, Hit.ImpactPoint + Hit.ImpactNormal * 50.0f, FColor::Yellow, false, 0.05f, 0, 1.0f);
+                }
+                break;
+            }
+            else if (bDebugDraw)
+            {
+                DrawDebugLine(GetWorld(), Start, End, FColor::Blue, false, 0.05f, 0, 0.25f);
+            }
+        }
+    }
+
 }
 
 void UCustomCarPhysicsComponent::HandleCarCollisions()
