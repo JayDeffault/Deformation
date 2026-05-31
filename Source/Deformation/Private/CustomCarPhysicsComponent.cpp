@@ -4,6 +4,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
+#include "DrawDebugHelpers.h"
 #include "ProceduralMeshComponent.h"
 #include "StaticMeshResources.h"
 
@@ -43,6 +44,11 @@ bool UCustomCarPhysicsComponent::InitializeFromTaggedMeshes()
     if (!CollisionSourceMesh)
     {
         CollisionSourceMesh = VisualMesh;
+    }
+
+    if (bDisableCollisionOnCollisionMeshComponent && CollisionSourceMesh)
+    {
+        CollisionSourceMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     }
 
     BuildRuntimeMeshFromStatic();
@@ -221,6 +227,14 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
     ProbePoints.Add(GetOwner()->GetActorTransform().TransformPosition(LocalSupportDown));
     ProbePoints.Add(GetOwner()->GetActorTransform().TransformPosition(LocalSupportUp));
 
+    if (bDebugDraw)
+    {
+        for (const FVector& P : ProbePoints)
+        {
+            DrawDebugPoint(GetWorld(), P, 8.0f, FColor::Cyan, false, 0.05f);
+        }
+    }
+
     for (const FVector& ProbeWS : ProbePoints)
     {
         FHitResult Hit;
@@ -263,6 +277,13 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
             }
 
             bGrounded = bGrounded || (Hit.ImpactNormal.Z > 0.65f);
+
+            if (bDebugDraw)
+            {
+                DrawDebugPoint(GetWorld(), Hit.ImpactPoint, 12.0f, FColor::Red, false, 0.05f);
+                DrawDebugLine(GetWorld(), Hit.ImpactPoint, Hit.ImpactPoint + Hit.ImpactNormal * 60.0f, FColor::Yellow, false, 0.05f, 0, 1.5f);
+                DrawDebugBox(GetWorld(), GetOwner()->GetActorTransform().TransformPosition(ProxyLocalCenter), ProxyHalfExtents, GetOwner()->GetActorQuat(), FColor::Green, false, 0.05f);
+            }
             break;
         }
     }

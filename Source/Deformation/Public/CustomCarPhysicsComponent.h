@@ -28,6 +28,8 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Setup") FName VisualMeshTag = TEXT("VisualMesh");
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Setup") FName CollisionMeshTag = TEXT("CollisionMesh");
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Debug") bool bDebugDraw = true;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Debug") bool bDisableCollisionOnCollisionMeshComponent = true;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float Mass = 1200.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") FVector ProxyHalfExtents = FVector(120.0f, 60.0f, 40.0f);
