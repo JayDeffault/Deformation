@@ -50,6 +50,11 @@ bool UCustomCarPhysicsComponent::InitializeFromTaggedMeshes()
     {
         CollisionSourceMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     }
+    if (VisualMesh)
+    {
+        // Встроенная коллизия исходного визуала должна быть выключена: контакты ведёт только кастомный деформируемый PhysicsMesh.
+        VisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
 
     BuildRuntimeMeshFromStatic();
     return RuntimeMesh != nullptr;
@@ -145,6 +150,7 @@ void UCustomCarPhysicsComponent::BuildRuntimeMeshFromStatic()
 
     RuntimeMesh = NewObject<UProceduralMeshComponent>(GetOwner(), TEXT("DeformationRuntimeMesh"));
     RuntimeMesh->SetupAttachment(VisualMesh);
+    RuntimeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     RuntimeMesh->RegisterComponent();
 
     VisualMesh->SetVisibility(false);
@@ -162,7 +168,7 @@ void UCustomCarPhysicsComponent::UpdateRuntimeMesh(bool bFullRebuildNormals)
     TArray<FColor> Colors; Colors.Init(FColor::White, VisualMeshState.Vertices.Num());
     TArray<FProcMeshTangent> Tangents; Tangents.Init(FProcMeshTangent(1,0,0), VisualMeshState.Vertices.Num());
 
-    if (!RuntimeMesh->GetProcMeshSection(0)) RuntimeMesh->CreateMeshSection(0, VisualMeshState.Vertices, VisualMeshState.Triangles, CachedNormals, UV0, Colors, Tangents, true);
+    if (!RuntimeMesh->GetProcMeshSection(0)) RuntimeMesh->CreateMeshSection(0, VisualMeshState.Vertices, VisualMeshState.Triangles, CachedNormals, UV0, Colors, Tangents, false);
     else if (DirtyVertices.Num() > 0) RuntimeMesh->UpdateMeshSection(0, VisualMeshState.Vertices, CachedNormals, UV0, Colors, Tangents);
 
     DirtyVertices.Reset();
@@ -201,18 +207,16 @@ void UCustomCarPhysicsComponent::SimulateFrame(float Dt)
     }
 
     bGrounded = false;
+    IntegrateMovement(Dt);
     HandleWorldCollision();
     HandleCarCollisions();
-    IntegrateMovement(Dt);
 }
 
 void UCustomCarPhysicsComponent::IntegrateMovement(float Dt)
 {
     if (!GetOwner()) return;
-    if (!bGrounded)
-    {
-        PhysicsState.Velocity += FVector(0, 0, -980.0f) * Dt;
-    }
+    // Гравитация всегда применяется в Tick; контакт ниже только убирает скорость в поверхность.
+    PhysicsState.Velocity += FVector(0, 0, -980.0f) * Dt;
 
     const float DampingFactor = FMath::Clamp(1.0f - LinearDamping * Dt, 0.0f, 1.0f);
     PhysicsState.Velocity.X *= DampingFactor;
@@ -329,8 +333,8 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
         {
             const FVector ProbeWS = WorldVerts[Idx];
             FHitResult Hit;
-            const FVector Start = ProbeWS + FVector::UpVector * GroundContactOffset;
-            const FVector End = ProbeWS - FVector::UpVector * GroundProbeDistance;
+            const FVector Start = ProbeWS + FVector::UpVector * (GroundProbeDistance + GroundContactOffset);
+            const FVector End = ProbeWS - FVector::UpVector * GroundContactOffset;
 
             if (GetWorld()->LineTraceSingleByObjectType(
                 Hit,
@@ -347,18 +351,22 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
             {
                 const float DistanceToSurface = (ProbeWS - Hit.ImpactPoint).Dot(Hit.ImpactNormal);
                 const float CorrectionDepth = GroundContactOffset - DistanceToSurface;
+                const bool bCloseEnoughForContact = DistanceToSurface <= (GroundContactOffset + GroundSnapTolerance);
                 if (CorrectionDepth > 0.0f)
                 {
                     GetOwner()->AddActorWorldOffset(Hit.ImpactNormal * CorrectionDepth, false);
                 }
 
-                const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
-                if (VN < 0.0f)
+                if (bCloseEnoughForContact)
                 {
-                    PhysicsState.Velocity -= Hit.ImpactNormal * VN;
-                }
+                    const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
+                    if (VN < 0.0f)
+                    {
+                        PhysicsState.Velocity -= Hit.ImpactNormal * VN;
+                    }
 
-                bGrounded = Hit.ImpactNormal.Z > 0.65f;
+                    bGrounded = Hit.ImpactNormal.Z > 0.65f;
+                }
 
                 if (bDebugDraw)
                 {
