@@ -242,6 +242,13 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
     if (WorldVerts.Num() == 0) return;
 
     FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(CustomCarWorldVertexTrace), false, GetOwner());
+    const FCollisionObjectQueryParams WorldObjectMask(
+        ECC_TO_BITFIELD(ECC_WorldStatic) |
+        ECC_TO_BITFIELD(ECC_WorldDynamic) |
+        ECC_TO_BITFIELD(ECC_Pawn) |
+        ECC_TO_BITFIELD(ECC_PhysicsBody) |
+        ECC_TO_BITFIELD(ECC_Vehicle) |
+        ECC_TO_BITFIELD(ECC_Destructible));
 
     const FVector Delta = GetOwner()->GetActorLocation() - PreviousActorLocation;
     const FVector MoveDir = Delta.IsNearlyZero() ? FVector::DownVector : Delta.GetSafeNormal();
@@ -276,13 +283,7 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
             Hit,
             Start,
             End,
-            FCollisionObjectQueryParams(
-                ECC_TO_BITFIELD(ECC_WorldStatic) |
-                ECC_TO_BITFIELD(ECC_WorldDynamic) |
-                ECC_TO_BITFIELD(ECC_Pawn) |
-                ECC_TO_BITFIELD(ECC_PhysicsBody) |
-                ECC_TO_BITFIELD(ECC_Vehicle) |
-                ECC_TO_BITFIELD(ECC_Destructible)),
+            WorldObjectMask,
             QueryParams))
         {
             const float ImpactForce = FMath::Max(Hit.PenetrationDepth * 700.0f, PhysicsState.Velocity.Size());
@@ -340,13 +341,7 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
                 Hit,
                 Start,
                 End,
-                FCollisionObjectQueryParams(
-                    ECC_TO_BITFIELD(ECC_WorldStatic) |
-                    ECC_TO_BITFIELD(ECC_WorldDynamic) |
-                    ECC_TO_BITFIELD(ECC_Pawn) |
-                    ECC_TO_BITFIELD(ECC_PhysicsBody) |
-                    ECC_TO_BITFIELD(ECC_Vehicle) |
-                    ECC_TO_BITFIELD(ECC_Destructible)),
+                WorldObjectMask,
                 QueryParams))
             {
                 const float DistanceToSurface = (ProbeWS - Hit.ImpactPoint).Dot(Hit.ImpactNormal);
@@ -359,6 +354,7 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
 
                 if (bCloseEnoughForContact)
                 {
+                    const float ImpactForce = PhysicsState.Velocity.Size();
                     const float VN = FVector::DotProduct(PhysicsState.Velocity, Hit.ImpactNormal);
                     if (VN < 0.0f)
                     {
@@ -366,6 +362,17 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
                     }
 
                     bGrounded = Hit.ImpactNormal.Z > 0.65f;
+
+                    if (ImpactForce >= MinImpactForceForDeformation && ImpactForce > MinImpactSpeedForDeformation)
+                    {
+                        const FTransform WorldToLocal = GetOwner()->GetActorTransform().Inverse();
+                        FDeformationEvent Event;
+                        Event.LocalPoint = WorldToLocal.TransformPosition(Hit.ImpactPoint);
+                        Event.LocalNormal = WorldToLocal.TransformVectorNoScale(Hit.ImpactNormal).GetSafeNormal();
+                        Event.Force = ImpactForce;
+                        Event.Radius = DeformRadius;
+                        DeformationQueue.Add(Event);
+                    }
                 }
 
                 if (bDebugDraw)
@@ -379,6 +386,42 @@ void UCustomCarPhysicsComponent::HandleWorldCollision()
             else if (bDebugDraw)
             {
                 DrawDebugLine(GetWorld(), Start, End, FColor::Blue, false, 0.05f, 0, 0.25f);
+            }
+        }
+    }
+
+    // Last-resort frame sweep with the current deformed bounds. This catches WorldStatic/PhysicsBody contacts
+    // when vertex probes miss because of a low-FPS step or an already-overlapping start point.
+    if (!bGrounded)
+    {
+        FHitResult SweepHit;
+        const FVector CenterWS = GetOwner()->GetActorTransform().TransformPosition(ProxyLocalCenter);
+        const FVector PrevCenterWS = CenterWS - Delta;
+        const FVector SafeExtents = (ProxyHalfExtents - FVector(FallbackSweepInflation)).ComponentMax(FVector(1.0f));
+        if (GetWorld()->SweepSingleByObjectType(
+            SweepHit,
+            PrevCenterWS,
+            CenterWS,
+            GetOwner()->GetActorQuat(),
+            WorldObjectMask,
+            FCollisionShape::MakeBox(SafeExtents),
+            QueryParams))
+        {
+            const float VN = FVector::DotProduct(PhysicsState.Velocity, SweepHit.ImpactNormal);
+            if (VN < 0.0f)
+            {
+                PhysicsState.Velocity -= SweepHit.ImpactNormal * VN;
+            }
+
+            const float CorrectionDepth = FMath::Max(SweepHit.PenetrationDepth, GroundContactOffset);
+            GetOwner()->AddActorWorldOffset(SweepHit.ImpactNormal * CorrectionDepth, false);
+            bGrounded = SweepHit.ImpactNormal.Z > 0.65f;
+
+            if (bDebugDraw)
+            {
+                DrawDebugBox(GetWorld(), CenterWS, SafeExtents, GetOwner()->GetActorQuat(), FColor::Magenta, false, 0.05f, 0, 1.0f);
+                DrawDebugPoint(GetWorld(), SweepHit.ImpactPoint, 12.0f, FColor::Red, false, 0.05f);
+                DrawDebugLine(GetWorld(), SweepHit.ImpactPoint, SweepHit.ImpactPoint + SweepHit.ImpactNormal * 60.0f, FColor::Yellow, false, 0.05f, 0, 1.0f);
             }
         }
     }

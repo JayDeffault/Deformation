@@ -40,6 +40,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundProbeDistance = 120.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GroundContactOffset = 2.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") int32 MaxGroundProbeVertices = 24;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float FallbackSweepInflation = 1.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float PositionalCorrectionFactor = 0.6f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float MaxLinearSpeed = 6000.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Custom Physics") float GravityTorqueScale = 0.0000025f;
