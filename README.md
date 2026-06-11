@@ -1,69 +1,42 @@
 # Deformation
 
-Runtime Unreal Engine plugin for skeletal vehicle collision deformation.
+Runtime Unreal Engine plugin for simple skeletal vehicle dent deformation.
 
-## What it does
+## Easiest setup
 
-`UDeformationComponent` binds to a `USkeletalMeshComponent`, listens for `OnComponentHit`, resolves the hit physics body bone, converts the collision normal impulse into an inward component-space offset, and stores that offset per bone. It can also apply an immediate physics impulse to the matching skeletal body so simulated deformation bones react at impact time.
+Use `ADeformationVehiclePawn`.
 
-## Direct C++ bone movement, without Control Rig or Animation Blueprint
+1. Create a Blueprint from `DeformationVehiclePawn`.
+2. Select the root `TargetMesh` component and assign your vehicle Skeletal Mesh asset there.
+3. Set `RootBone` to the chassis/root bone that must never move.
+4. Play. The pawn already contains:
+   - `TargetMesh` as the RootComponent for collision, physics bodies, and hit events.
+   - `PoseableMesh` as the visible copy whose bones are moved directly from C++.
+   - `DeformationComponent` bound to both meshes with direct deformation enabled.
 
-Yes, this plugin can work without Control Rig and without an Animation Blueprint. Enable `Apply Direct Bone Transforms` on `DeformationComponent`. The plugin does not try to overwrite the internal pose of `USkeletalMeshComponent` directly, because regular animation/physics evaluation can replace those transforms; instead it renders a poseable copy whose bones are controlled entirely from C++.
+By default you do not need Control Rig, an Animation Blueprint, or per-bone setup. Every hit bone can deform except the configured `RootBone`.
 
-In that mode the component uses a `UPoseableMeshComponent` as the visible mesh and writes bone locations directly from C++ with `SetBoneLocationByName`:
+## How it works
 
-1. `TargetMesh` stays on the vehicle and remains responsible for collision, hit events, physics bodies, and impulses.
-2. `PoseableMesh` is the visual copy whose bones are moved directly by code.
-3. If `PoseableMesh` is not assigned and `Auto Create Poseable Mesh` is enabled, the component creates it at runtime from `TargetMesh`.
-4. If `Hide Target Mesh When Using Poseable` is enabled, the original skeletal mesh is hidden visually but still keeps collision/physics active.
+`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted physics body bone, converts collision normal impulse into an inward component-space offset, and writes that offset to the same bone on `PoseableMesh` with `SetBoneLocationByName`.
 
-This route is best for first-stage dent/deformation bones. If you later need complex animation blending, wheel/door animation layers, or network-perfect animation state, you can still disable direct transforms and consume `GetBoneDeformationOffset` in an animation graph.
-
-## Basic setup
-
-1. Enable physics collision notifications on the vehicle skeletal mesh. The component also calls `SetNotifyRigidBodyCollision(true)` when it binds, but collision presets must still block the impact channel.
-2. Add `DeformationComponent` to the vehicle actor.
-3. Assign `TargetMesh`, or leave it empty to use the owner's first skeletal mesh component.
-4. Leave `Apply Direct Bone Transforms` enabled to avoid Control Rig / Anim Blueprint.
-5. Fill `BoneSettings` with deformable physics body bone names, for example `door_l_deform_01`, `hood_deform_02`, or `trunk_deform_01`.
-6. Fill `Protected Root Bone` with the chassis/root bone that must never move, and add hinge bones such as door, hood, or trunk pivots to `Protected Bones`.
-7. If deformation bones are simulated physics bodies, keep `Apply Physics Impulse` enabled so the body is kicked inward on impact.
-
-## Protected root and hinge bones
-
-Root/chassis bones and mechanical hinge bones should not be treated as dent bones. Add those names to the protected-bone settings:
-
-- `ProtectedRootBone`: a single root or chassis bone that is always ignored by deformation.
-- `ProtectedBones`: exact additional bone names to ignore, for example `door_l_hinge`, `hood_hinge`, or `trunk_hinge`.
-- `ProtectChildBones`: optional. Keep it disabled when a hinge itself must stay fixed but deformation bones under that hinge should still be allowed to dent. Enable it only when an entire branch should be non-deformable.
-- `ClearProtectedBoneState`: removes old stored offsets for bones that become protected at runtime.
-
-Protected bones do not accumulate deformation offsets, do not receive the generated deformation `AddImpulse`, are skipped by direct poseable bone writes, and are hidden from deformation-state queries.
+`TargetMesh` stays hidden visually when the poseable copy is active, but it still owns collision and physics. `PoseableMesh` has collision disabled and is only the visible deformed mesh.
 
 ## Important settings
 
-- `ApplyDirectBoneTransforms`: writes the deformation directly into `PoseableMesh` from C++.
-- `PoseableMesh`: optional pre-made poseable visual mesh; if empty, the plugin can create one.
-- `AutoCreatePoseableMesh`: creates a runtime visual clone from `TargetMesh`.
-- `HideTargetMeshWhenUsingPoseable`: hides the physics/collision skeletal mesh while the poseable clone renders.
-- `ProtectedRootBone`: root/chassis bone that must never be shifted by collision deformation.
-- `ProtectedBones`: hinge or structural bones that must never be shifted by collision deformation.
-- `ProtectChildBones`: also protects descendants of protected bones when an entire hierarchy branch must stay rigid.
-- `MinImpulse`: filters weak touches.
-- `ImpulseForMaxOffset`: impulse value that maps to `MaxOffset`.
-- `MaxOffset`: clamp for accumulated dent translation in centimeters.
-- `PhysicsImpulseScale`: scales the impulse sent to the physics body.
-- `RecoverySpeed`: set to `0` for permanent dents, or above `0` for spring-like recovery.
-- `OnlyConfiguredBones`: when enabled, only bones listed in `BoneSettings` can deform.
+- `RootBone`: the root/chassis bone that must never receive deformation offsets or generated deformation impulses.
+- `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.
+- `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.
+- `BoneSettings`: optional per-bone overrides.
+- `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
+- `ApplyPhysicsImpulse`: also pushes the impacted physics body inward when a valid deformation hit is accepted.
+- `RecoverySpeed`: keep `0` for permanent dents, or set above `0` for dents that return toward zero.
 
 ## Runtime API
 
 - `ApplyDeformationImpulse`: manually deform a bone from traces, damage events, or custom collision code.
+- `IsRootBone`: check if a bone is the protected root bone.
 - `RefreshDirectBoneTransforms`: reapplies all stored offsets to the poseable mesh.
-- `InitializeDirectBoneTransforms`: creates/configures the poseable visual mesh.
-- `SetPoseableMesh`: assigns a custom poseable visual mesh.
-- `IsBoneProtected`, `AddProtectedBone`, `RemoveProtectedBone`: query and change non-deformable root/hinge bones at runtime.
-- `GetBoneDeformationOffset`: read an offset if you choose to drive another system manually.
-- `GetAllDeformationStates`: read all active dents for UI, saving, or debugging.
-- `ResetDeformation`: clear one bone or all deformation state.
-- `OnBoneDeformed`: Blueprint event fired whenever a bone receives a valid deformation impulse.
+- `InitializeDirectBoneTransforms`: creates/configures the poseable visual mesh when using the component outside the pawn.
+- `GetBoneDeformationOffset`, `GetAllDeformationStates`, `ResetDeformation`: inspect or clear deformation state.
+- `OnBoneDeformed`: Blueprint event fired when a bone receives a valid deformation impulse.

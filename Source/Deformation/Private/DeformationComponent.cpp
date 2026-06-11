@@ -112,6 +112,10 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 	}
 
 	PoseableMesh->SetSkinnedAssetAndUpdate(TargetMesh->GetSkinnedAsset());
+	for (int32 MaterialIndex = 0; MaterialIndex < TargetMesh->GetNumMaterials(); ++MaterialIndex)
+	{
+		PoseableMesh->SetMaterial(MaterialIndex, TargetMesh->GetMaterial(MaterialIndex));
+	}
 	PoseableMesh->AttachToComponent(TargetMesh, FAttachmentTransformRules::SnapToTargetIncludingScale);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetVisibility(true, true);
@@ -127,7 +131,7 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 
 bool UDeformationComponent::RefreshDirectBoneTransforms()
 {
-	RemoveProtectedBoneStates();
+	RemoveRootBoneState();
 
 	if (!bApplyDirectBoneTransforms || !PoseableMesh)
 	{
@@ -161,63 +165,14 @@ void UDeformationComponent::ResetDeformation(FName BoneName)
 	RefreshDirectBoneTransforms();
 }
 
-bool UDeformationComponent::IsBoneProtected(FName BoneName) const
+bool UDeformationComponent::IsRootBone(FName BoneName) const
 {
-	if (BoneName.IsNone())
-	{
-		return false;
-	}
-
-	const auto IsExactProtectedBone = [this](FName TestBoneName)
-	{
-		return !TestBoneName.IsNone() && (TestBoneName == ProtectedRootBone || ProtectedBones.Contains(TestBoneName));
-	};
-
-	if (IsExactProtectedBone(BoneName))
-	{
-		return true;
-	}
-
-	if (!bProtectChildBones || !TargetMesh)
-	{
-		return false;
-	}
-
-	FName ParentBoneName = TargetMesh->GetParentBone(BoneName);
-	while (!ParentBoneName.IsNone())
-	{
-		if (IsExactProtectedBone(ParentBoneName))
-		{
-			return true;
-		}
-
-		ParentBoneName = TargetMesh->GetParentBone(ParentBoneName);
-	}
-
-	return false;
-}
-
-void UDeformationComponent::AddProtectedBone(FName BoneName)
-{
-	if (BoneName.IsNone())
-	{
-		return;
-	}
-
-	ProtectedBones.AddUnique(BoneName);
-	BoneStates.Remove(BoneName);
-	RefreshDirectBoneTransforms();
-}
-
-void UDeformationComponent::RemoveProtectedBone(FName BoneName)
-{
-	ProtectedBones.Remove(BoneName);
-	RefreshDirectBoneTransforms();
+	return !BoneName.IsNone() && !RootBone.IsNone() && BoneName == RootBone;
 }
 
 FVector UDeformationComponent::GetBoneDeformationOffset(FName BoneName) const
 {
-	if (IsBoneProtected(BoneName))
+	if (IsRootBone(BoneName))
 	{
 		return FVector::ZeroVector;
 	}
@@ -232,7 +187,7 @@ FVector UDeformationComponent::GetBoneDeformationOffset(FName BoneName) const
 
 bool UDeformationComponent::GetBoneDeformationState(FName BoneName, FDeformationBoneState& OutState) const
 {
-	if (IsBoneProtected(BoneName))
+	if (IsRootBone(BoneName))
 	{
 		OutState = FDeformationBoneState();
 		return false;
@@ -253,7 +208,7 @@ void UDeformationComponent::GetAllDeformationStates(TArray<FDeformationBoneState
 	OutStates.Reset(BoneStates.Num());
 	for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
 	{
-		if (!IsBoneProtected(Pair.Key))
+		if (!IsRootBone(Pair.Key))
 		{
 			OutStates.Add(Pair.Value);
 		}
@@ -267,7 +222,7 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 		return false;
 	}
 
-	if (IsBoneProtected(BoneName))
+	if (IsRootBone(BoneName))
 	{
 		BoneStates.Remove(BoneName);
 		RefreshDirectBoneTransforms();
@@ -367,7 +322,7 @@ FDeformationBoneState& UDeformationComponent::FindOrAddState(FName BoneName)
 
 void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const
 {
-	if (IsBoneProtected(BoneName))
+	if (IsRootBone(BoneName))
 	{
 		return;
 	}
@@ -387,18 +342,10 @@ void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, cons
 	PoseableMesh->SetBoneLocationByName(BoneName, CurrentLocationCS + OffsetCS, EBoneSpaces::ComponentSpace);
 }
 
-void UDeformationComponent::RemoveProtectedBoneStates()
+void UDeformationComponent::RemoveRootBoneState()
 {
-	if (!bClearProtectedBoneState || BoneStates.Num() == 0)
+	if (!RootBone.IsNone())
 	{
-		return;
-	}
-
-	for (auto It = BoneStates.CreateIterator(); It; ++It)
-	{
-		if (IsBoneProtected(It.Key()))
-		{
-			It.RemoveCurrent();
-		}
+		BoneStates.Remove(RootBone);
 	}
 }
