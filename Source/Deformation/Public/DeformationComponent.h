@@ -8,6 +8,7 @@
 
 class AActor;
 class USkeletalMeshComponent;
+class UPoseableMeshComponent;
 class UPrimitiveComponent;
 
 /** Per-bone tuning for collision driven deformation. */
@@ -37,7 +38,7 @@ struct DEFORMATION_API FDeformationBoneSettings
 	float PhysicsImpulseScale = 1.0f;
 };
 
-/** Runtime state for a deformed bone. Feed OffsetCS into Control Rig or an Anim Blueprint Transform Bone node. */
+/** Runtime state for a deformed bone. OffsetCS is also applied directly when direct bone transforms are enabled. */
 USTRUCT(BlueprintType)
 struct DEFORMATION_API FDeformationBoneState
 {
@@ -63,7 +64,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnBoneDeformedSignature, FName, 
  * Listens for hits on a skeletal vehicle mesh and converts collision impulse into per-bone deformation offsets.
  *
  * The component also kicks the matching physics body away from the impact so fully simulated deformation bones can
- * move immediately. For visual meshes driven by an Anim Blueprint / Control Rig, query GetBoneDeformationOffset().
+ * move immediately. It can either expose offsets for an animation graph or apply them directly to a PoseableMeshComponent.
  */
 UCLASS(ClassGroup = (Deformation), BlueprintType, Blueprintable, meta = (BlueprintSpawnableComponent))
 class DEFORMATION_API UDeformationComponent : public UActorComponent
@@ -83,6 +84,26 @@ public:
 	/** If true, hits on bones that are not listed in BoneSettings are ignored. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation")
 	bool bOnlyConfiguredBones = true;
+
+	/** If true, the component writes bone locations directly to a PoseableMeshComponent, so no Anim Blueprint or Control Rig is required. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
+	bool bApplyDirectBoneTransforms = true;
+
+	/** Poseable visual mesh that receives direct bone offsets. If empty, it can be created automatically from TargetMesh. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
+	TObjectPtr<UPoseableMeshComponent> PoseableMesh;
+
+	/** Automatically create a PoseableMeshComponent copy of TargetMesh at runtime when direct bone transforms are enabled. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
+	bool bAutoCreatePoseableMesh = true;
+
+	/** Hide TargetMesh rendering while keeping its collision/physics active; PoseableMesh becomes the visible deformed mesh. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
+	bool bHideTargetMeshWhenUsingPoseable = true;
+
+	/** Copy TargetMesh pose before reapplying offsets. Disable only if PoseableMesh is controlled entirely by this component. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
+	bool bCopyTargetPoseBeforeApplyingDirectOffsets = true;
 
 	/** If true, AddImpulse is called on the impacted physics body as well as storing the deformation offset. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
@@ -111,6 +132,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Deformation")
 	void BindToMesh(USkeletalMeshComponent* MeshComponent);
 
+	UFUNCTION(BlueprintCallable, Category = "Deformation|Direct Bones")
+	void SetPoseableMesh(UPoseableMeshComponent* MeshComponent);
+
+	/** Creates/configures the poseable visual mesh used for direct C++ bone movement. */
+	UFUNCTION(BlueprintCallable, Category = "Deformation|Direct Bones")
+	bool InitializeDirectBoneTransforms();
+
+	/** Reapplies every stored deformation offset to PoseableMesh. */
+	UFUNCTION(BlueprintCallable, Category = "Deformation|Direct Bones")
+	bool RefreshDirectBoneTransforms();
+
 	UFUNCTION(BlueprintCallable, Category = "Deformation")
 	void ResetDeformation(FName BoneName = NAME_None);
 
@@ -134,6 +166,7 @@ private:
 	const FDeformationBoneSettings* FindSettings(FName BoneName) const;
 	FName ResolveHitBone(const FHitResult& Hit) const;
 	FDeformationBoneState& FindOrAddState(FName BoneName);
+	void ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const;
 
 	UPROPERTY(Transient)
 	TMap<FName, FDeformationBoneState> BoneStates;

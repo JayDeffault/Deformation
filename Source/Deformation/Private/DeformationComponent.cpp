@@ -2,6 +2,7 @@
 
 #include "DeformationComponent.h"
 
+#include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Actor.h"
 
@@ -41,20 +42,25 @@ void UDeformationComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (RecoverySpeed <= 0.0f || BoneStates.Num() == 0)
+	if (BoneStates.Num() == 0)
 	{
 		return;
 	}
 
-	for (auto It = BoneStates.CreateIterator(); It; ++It)
+	if (RecoverySpeed > 0.0f)
 	{
-		FDeformationBoneState& State = It.Value();
-		State.OffsetCS = FMath::VInterpTo(State.OffsetCS, FVector::ZeroVector, DeltaTime, RecoverySpeed);
-		if (State.OffsetCS.IsNearlyZero(0.01f))
+		for (auto It = BoneStates.CreateIterator(); It; ++It)
 		{
-			It.RemoveCurrent();
+			FDeformationBoneState& State = It.Value();
+			State.OffsetCS = FMath::VInterpTo(State.OffsetCS, FVector::ZeroVector, DeltaTime, RecoverySpeed);
+			if (State.OffsetCS.IsNearlyZero(0.01f))
+			{
+				It.RemoveCurrent();
+			}
 		}
 	}
+
+	RefreshDirectBoneTransforms();
 }
 
 void UDeformationComponent::BindToMesh(USkeletalMeshComponent* MeshComponent)
@@ -71,6 +77,73 @@ void UDeformationComponent::BindToMesh(USkeletalMeshComponent* MeshComponent)
 		TargetMesh->SetNotifyRigidBodyCollision(true);
 		TargetMesh->OnComponentHit.AddUniqueDynamic(this, &UDeformationComponent::HandleMeshHit);
 	}
+
+	InitializeDirectBoneTransforms();
+}
+
+void UDeformationComponent::SetPoseableMesh(UPoseableMeshComponent* MeshComponent)
+{
+	PoseableMesh = MeshComponent;
+	InitializeDirectBoneTransforms();
+}
+
+bool UDeformationComponent::InitializeDirectBoneTransforms()
+{
+	if (!bApplyDirectBoneTransforms || !TargetMesh)
+	{
+		return false;
+	}
+
+	AActor* Owner = GetOwner();
+	if (!PoseableMesh && bAutoCreatePoseableMesh && Owner)
+	{
+		PoseableMesh = NewObject<UPoseableMeshComponent>(Owner, UPoseableMeshComponent::StaticClass(), TEXT("DeformationPoseableMesh"));
+		if (PoseableMesh)
+		{
+			Owner->AddInstanceComponent(PoseableMesh);
+			PoseableMesh->SetupAttachment(TargetMesh);
+			PoseableMesh->RegisterComponent();
+		}
+	}
+
+	if (!PoseableMesh)
+	{
+		return false;
+	}
+
+	PoseableMesh->SetSkinnedAssetAndUpdate(TargetMesh->GetSkinnedAsset());
+	PoseableMesh->AttachToComponent(TargetMesh, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PoseableMesh->SetVisibility(true, true);
+	PoseableMesh->CopyPoseFromSkeletalComponent(TargetMesh);
+
+	if (bHideTargetMeshWhenUsingPoseable)
+	{
+		TargetMesh->SetVisibility(false, false);
+	}
+
+	return RefreshDirectBoneTransforms();
+}
+
+bool UDeformationComponent::RefreshDirectBoneTransforms()
+{
+	if (!bApplyDirectBoneTransforms || !PoseableMesh)
+	{
+		return false;
+	}
+
+	if (TargetMesh && bCopyTargetPoseBeforeApplyingDirectOffsets)
+	{
+		PoseableMesh->CopyPoseFromSkeletalComponent(TargetMesh);
+	}
+
+	for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
+	{
+		ApplyDirectOffsetToPoseableBone(Pair.Key, Pair.Value.OffsetCS);
+	}
+
+	PoseableMesh->RefreshBoneTransforms();
+	return true;
 }
 
 void UDeformationComponent::ResetDeformation(FName BoneName)
@@ -78,10 +151,12 @@ void UDeformationComponent::ResetDeformation(FName BoneName)
 	if (BoneName.IsNone())
 	{
 		BoneStates.Reset();
+		RefreshDirectBoneTransforms();
 		return;
 	}
 
 	BoneStates.Remove(BoneName);
+	RefreshDirectBoneTransforms();
 }
 
 FVector UDeformationComponent::GetBoneDeformationOffset(FName BoneName) const
@@ -162,6 +237,7 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 		TargetMesh->AddImpulse(DeformationDirectionWS * NormalImpulse * Settings->PhysicsImpulseScale, BoneName, bVelocityChange);
 	}
 
+	RefreshDirectBoneTransforms();
 	OnBoneDeformed.Broadcast(BoneName, State.OffsetCS, NormalImpulse);
 	return true;
 }
@@ -210,4 +286,21 @@ FDeformationBoneState& UDeformationComponent::FindOrAddState(FName BoneName)
 	FDeformationBoneState NewState;
 	NewState.BoneName = BoneName;
 	return BoneStates.Add(BoneName, NewState);
+}
+
+void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const
+{
+	if (!PoseableMesh || BoneName.IsNone())
+	{
+		return;
+	}
+
+	const int32 BoneIndex = PoseableMesh->GetBoneIndex(BoneName);
+	if (BoneIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	const FVector CurrentLocationCS = PoseableMesh->GetBoneLocationByName(BoneName, EBoneSpaces::ComponentSpace);
+	PoseableMesh->SetBoneLocationByName(BoneName, CurrentLocationCS + OffsetCS, EBoneSpaces::ComponentSpace);
 }
