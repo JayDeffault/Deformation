@@ -85,6 +85,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation")
 	bool bOnlyConfiguredBones = true;
 
+	/** Root / chassis bone that must never receive deformation offsets or generated deformation impulses. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Protected Bones")
+	FName ProtectedRootBone = NAME_None;
+
+	/** Additional exact bone names that must never be deformed, for example door, hood, or trunk hinge bones. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Protected Bones")
+	TArray<FName> ProtectedBones;
+
+	/** If true, direct children and deeper descendants of protected bones are protected too. Disabled by default so hinge children can still deform. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Protected Bones")
+	bool bProtectChildBones = false;
+
+	/** If true, protected bones are removed from stored deformation state during refresh/reset queries. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Protected Bones")
+	bool bClearProtectedBoneState = true;
+
 	/** If true, the component writes bone locations directly to a PoseableMeshComponent, so no Anim Blueprint or Control Rig is required. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
 	bool bApplyDirectBoneTransforms = true;
@@ -146,6 +162,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Deformation")
 	void ResetDeformation(FName BoneName = NAME_None);
 
+	/** Returns true when this bone is configured as non-deformable/protected. */
+	UFUNCTION(BlueprintPure, Category = "Deformation|Protected Bones")
+	bool IsBoneProtected(FName BoneName) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Deformation|Protected Bones")
+	void AddProtectedBone(FName BoneName);
+
+	UFUNCTION(BlueprintCallable, Category = "Deformation|Protected Bones")
+	void RemoveProtectedBone(FName BoneName);
+
 	UFUNCTION(BlueprintPure, Category = "Deformation")
 	FVector GetBoneDeformationOffset(FName BoneName) const;
 
@@ -167,6 +193,7 @@ private:
 	FName ResolveHitBone(const FHitResult& Hit) const;
 	FDeformationBoneState& FindOrAddState(FName BoneName);
 	void ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const;
+	void RemoveProtectedBoneStates();
 
 	UPROPERTY(Transient)
 	TMap<FName, FDeformationBoneState> BoneStates;

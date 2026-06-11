@@ -26,7 +26,19 @@ This route is best for first-stage dent/deformation bones. If you later need com
 3. Assign `TargetMesh`, or leave it empty to use the owner's first skeletal mesh component.
 4. Leave `Apply Direct Bone Transforms` enabled to avoid Control Rig / Anim Blueprint.
 5. Fill `BoneSettings` with deformable physics body bone names, for example `door_l_deform_01`, `hood_deform_02`, or `trunk_deform_01`.
-6. If deformation bones are simulated physics bodies, keep `Apply Physics Impulse` enabled so the body is kicked inward on impact.
+6. Fill `Protected Root Bone` with the chassis/root bone that must never move, and add hinge bones such as door, hood, or trunk pivots to `Protected Bones`.
+7. If deformation bones are simulated physics bodies, keep `Apply Physics Impulse` enabled so the body is kicked inward on impact.
+
+## Protected root and hinge bones
+
+Root/chassis bones and mechanical hinge bones should not be treated as dent bones. Add those names to the protected-bone settings:
+
+- `ProtectedRootBone`: a single root or chassis bone that is always ignored by deformation.
+- `ProtectedBones`: exact additional bone names to ignore, for example `door_l_hinge`, `hood_hinge`, or `trunk_hinge`.
+- `ProtectChildBones`: optional. Keep it disabled when a hinge itself must stay fixed but deformation bones under that hinge should still be allowed to dent. Enable it only when an entire branch should be non-deformable.
+- `ClearProtectedBoneState`: removes old stored offsets for bones that become protected at runtime.
+
+Protected bones do not accumulate deformation offsets, do not receive the generated deformation `AddImpulse`, are skipped by direct poseable bone writes, and are hidden from deformation-state queries.
 
 ## Important settings
 
@@ -34,6 +46,9 @@ This route is best for first-stage dent/deformation bones. If you later need com
 - `PoseableMesh`: optional pre-made poseable visual mesh; if empty, the plugin can create one.
 - `AutoCreatePoseableMesh`: creates a runtime visual clone from `TargetMesh`.
 - `HideTargetMeshWhenUsingPoseable`: hides the physics/collision skeletal mesh while the poseable clone renders.
+- `ProtectedRootBone`: root/chassis bone that must never be shifted by collision deformation.
+- `ProtectedBones`: hinge or structural bones that must never be shifted by collision deformation.
+- `ProtectChildBones`: also protects descendants of protected bones when an entire hierarchy branch must stay rigid.
 - `MinImpulse`: filters weak touches.
 - `ImpulseForMaxOffset`: impulse value that maps to `MaxOffset`.
 - `MaxOffset`: clamp for accumulated dent translation in centimeters.
@@ -47,6 +62,7 @@ This route is best for first-stage dent/deformation bones. If you later need com
 - `RefreshDirectBoneTransforms`: reapplies all stored offsets to the poseable mesh.
 - `InitializeDirectBoneTransforms`: creates/configures the poseable visual mesh.
 - `SetPoseableMesh`: assigns a custom poseable visual mesh.
+- `IsBoneProtected`, `AddProtectedBone`, `RemoveProtectedBone`: query and change non-deformable root/hinge bones at runtime.
 - `GetBoneDeformationOffset`: read an offset if you choose to drive another system manually.
 - `GetAllDeformationStates`: read all active dents for UI, saving, or debugging.
 - `ResetDeformation`: clear one bone or all deformation state.

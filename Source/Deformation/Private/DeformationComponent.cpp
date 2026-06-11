@@ -127,6 +127,8 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 
 bool UDeformationComponent::RefreshDirectBoneTransforms()
 {
+	RemoveProtectedBoneStates();
+
 	if (!bApplyDirectBoneTransforms || !PoseableMesh)
 	{
 		return false;
@@ -159,8 +161,67 @@ void UDeformationComponent::ResetDeformation(FName BoneName)
 	RefreshDirectBoneTransforms();
 }
 
+bool UDeformationComponent::IsBoneProtected(FName BoneName) const
+{
+	if (BoneName.IsNone())
+	{
+		return false;
+	}
+
+	const auto IsExactProtectedBone = [this](FName TestBoneName)
+	{
+		return !TestBoneName.IsNone() && (TestBoneName == ProtectedRootBone || ProtectedBones.Contains(TestBoneName));
+	};
+
+	if (IsExactProtectedBone(BoneName))
+	{
+		return true;
+	}
+
+	if (!bProtectChildBones || !TargetMesh)
+	{
+		return false;
+	}
+
+	FName ParentBoneName = TargetMesh->GetParentBone(BoneName);
+	while (!ParentBoneName.IsNone())
+	{
+		if (IsExactProtectedBone(ParentBoneName))
+		{
+			return true;
+		}
+
+		ParentBoneName = TargetMesh->GetParentBone(ParentBoneName);
+	}
+
+	return false;
+}
+
+void UDeformationComponent::AddProtectedBone(FName BoneName)
+{
+	if (BoneName.IsNone())
+	{
+		return;
+	}
+
+	ProtectedBones.AddUnique(BoneName);
+	BoneStates.Remove(BoneName);
+	RefreshDirectBoneTransforms();
+}
+
+void UDeformationComponent::RemoveProtectedBone(FName BoneName)
+{
+	ProtectedBones.Remove(BoneName);
+	RefreshDirectBoneTransforms();
+}
+
 FVector UDeformationComponent::GetBoneDeformationOffset(FName BoneName) const
 {
+	if (IsBoneProtected(BoneName))
+	{
+		return FVector::ZeroVector;
+	}
+
 	if (const FDeformationBoneState* State = BoneStates.Find(BoneName))
 	{
 		return State->OffsetCS;
@@ -171,6 +232,12 @@ FVector UDeformationComponent::GetBoneDeformationOffset(FName BoneName) const
 
 bool UDeformationComponent::GetBoneDeformationState(FName BoneName, FDeformationBoneState& OutState) const
 {
+	if (IsBoneProtected(BoneName))
+	{
+		OutState = FDeformationBoneState();
+		return false;
+	}
+
 	if (const FDeformationBoneState* State = BoneStates.Find(BoneName))
 	{
 		OutState = *State;
@@ -186,7 +253,10 @@ void UDeformationComponent::GetAllDeformationStates(TArray<FDeformationBoneState
 	OutStates.Reset(BoneStates.Num());
 	for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
 	{
-		OutStates.Add(Pair.Value);
+		if (!IsBoneProtected(Pair.Key))
+		{
+			OutStates.Add(Pair.Value);
+		}
 	}
 }
 
@@ -194,6 +264,13 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 {
 	if (!TargetMesh || BoneName.IsNone())
 	{
+		return false;
+	}
+
+	if (IsBoneProtected(BoneName))
+	{
+		BoneStates.Remove(BoneName);
+		RefreshDirectBoneTransforms();
 		return false;
 	}
 
@@ -290,6 +367,11 @@ FDeformationBoneState& UDeformationComponent::FindOrAddState(FName BoneName)
 
 void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const
 {
+	if (IsBoneProtected(BoneName))
+	{
+		return;
+	}
+
 	if (!PoseableMesh || BoneName.IsNone())
 	{
 		return;
@@ -303,4 +385,20 @@ void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, cons
 
 	const FVector CurrentLocationCS = PoseableMesh->GetBoneLocationByName(BoneName, EBoneSpaces::ComponentSpace);
 	PoseableMesh->SetBoneLocationByName(BoneName, CurrentLocationCS + OffsetCS, EBoneSpaces::ComponentSpace);
+}
+
+void UDeformationComponent::RemoveProtectedBoneStates()
+{
+	if (!bClearProtectedBoneState || BoneStates.Num() == 0)
+	{
+		return;
+	}
+
+	for (auto It = BoneStates.CreateIterator(); It; ++It)
+	{
+		if (IsBoneProtected(It.Key()))
+		{
+			It.RemoveCurrent();
+		}
+	}
 }
