@@ -125,7 +125,7 @@ void ADeformationVehiclePawn::ConfigurePoseableMeshTransform(const FTransform& A
 	}
 
 	PoseableMesh->SetMobility(EComponentMobility::Movable);
-	USceneComponent* MeshAttachParent = TargetMesh ? static_cast<USceneComponent*>(TargetMesh.Get()) : RootComponent;
+	USceneComponent* MeshAttachParent = TargetMesh ? static_cast<USceneComponent*>(TargetMesh.Get()) : RootComponent.Get();
 	if (MeshAttachParent)
 	{
 		PoseableMesh->AttachToComponent(MeshAttachParent, FAttachmentTransformRules::SnapToTargetIncludingScale);
