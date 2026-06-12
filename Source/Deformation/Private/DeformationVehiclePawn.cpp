@@ -12,12 +12,17 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 
 	TargetMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TargetMesh"));
 	SetRootComponent(TargetMesh);
+	TargetMesh->SetRelativeTransform(FTransform::Identity);
+	TargetMesh->SetCollisionProfileName(CollisionProfileName);
 	TargetMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	TargetMesh->SetNotifyRigidBodyCollision(true);
+	TargetMesh->SetGenerateOverlapEvents(false);
 
 	PoseableMesh = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("PoseableMesh"));
 	PoseableMesh->SetupAttachment(TargetMesh);
+	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PoseableMesh->SetGenerateOverlapEvents(false);
 
 	DeformationComponent = CreateDefaultSubobject<UDeformationComponent>(TEXT("DeformationComponent"));
 	DeformationComponent->TargetMesh = TargetMesh;
@@ -45,6 +50,29 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 	if (!DeformationComponent)
 	{
 		return;
+	}
+
+	if (TargetMesh)
+	{
+		TargetMesh->SetRelativeTransform(FTransform::Identity);
+		TargetMesh->SetWorldTransform(GetActorTransform(), false, nullptr, ETeleportType::TeleportPhysics);
+		TargetMesh->SetCollisionProfileName(CollisionProfileName);
+		TargetMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		TargetMesh->SetNotifyRigidBodyCollision(true);
+		TargetMesh->SetGenerateOverlapEvents(false);
+		TargetMesh->SetSimulatePhysics(bSimulatePhysics);
+		if (bSimulatePhysics && bWakeRigidBodies)
+		{
+			TargetMesh->WakeAllRigidBodies();
+		}
+	}
+
+	if (PoseableMesh)
+	{
+		PoseableMesh->SetRelativeTransform(FTransform::Identity);
+		PoseableMesh->SetWorldTransform(TargetMesh ? TargetMesh->GetComponentTransform() : GetActorTransform());
+		PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		PoseableMesh->SetGenerateOverlapEvents(false);
 	}
 
 	DeformationComponent->TargetMesh = TargetMesh;

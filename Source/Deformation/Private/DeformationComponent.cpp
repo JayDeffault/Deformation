@@ -117,13 +117,17 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 		PoseableMesh->SetMaterial(MaterialIndex, TargetMesh->GetMaterial(MaterialIndex));
 	}
 	PoseableMesh->AttachToComponent(TargetMesh, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	PoseableMesh->SetRelativeTransform(FTransform::Identity);
+	PoseableMesh->SetWorldTransform(TargetMesh->GetComponentTransform());
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PoseableMesh->SetGenerateOverlapEvents(false);
 	PoseableMesh->SetVisibility(true, true);
+	PoseableMesh->SetHiddenInGame(false, true);
 	PoseableMesh->CopyPoseFromSkeletalComponent(TargetMesh);
 
 	if (bHideTargetMeshWhenUsingPoseable)
 	{
-		TargetMesh->SetVisibility(false, false);
+		TargetMesh->SetHiddenInGame(true, false);
 	}
 
 	return RefreshDirectBoneTransforms();

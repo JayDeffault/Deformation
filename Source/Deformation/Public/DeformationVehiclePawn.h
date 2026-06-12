@@ -43,6 +43,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation")
 	FName RootBone = NAME_None;
 
+	/** Collision profile applied to TargetMesh so Physics Asset bodies are visible/usable for blocking hits. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	FName CollisionProfileName = TEXT("PhysicsActor");
+
+	/** Enable physics simulation on TargetMesh at setup time. Requires a valid Physics Asset on the Skeletal Mesh. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bSimulatePhysics = true;
+
+	/** Wake skeletal bodies after physics is enabled so hit events and impulses start working immediately. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bWakeRigidBodies = true;
+
 	/** Push current pawn defaults into DeformationComponent and refresh the poseable mesh. */
 	UFUNCTION(BlueprintCallable, Category = "Deformation")
 	void ConfigureDeformation();
