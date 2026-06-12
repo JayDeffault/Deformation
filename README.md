@@ -24,13 +24,15 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 
 `DeformationVehiclePawn` applies these defaults to `TargetMesh` in construction and at BeginPlay:
 
+- `TargetMesh` is the RootComponent and is forced back to relative transform identity, then placed at the Blueprint actor transform.
 - `CollisionProfileName = PhysicsActor`.
 - `CollisionEnabled = QueryAndPhysics`.
-- `Simulation Generates Hit Events` is enabled with `SetNotifyRigidBodyCollision(true)`.
-- `Simulate Physics` is enabled by default.
+- `Simulation Generates Hit Events` is enabled with `SetNotifyRigidBodyCollision(true)` and `SetAllBodiesNotifyRigidBodyCollision(true)`.
+- When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
+- `Simulate Physics` is enabled by default with both `SetSimulatePhysics` and `SetAllBodiesSimulatePhysics`.
 - All rigid bodies are woken at setup time.
 
-`PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy. Use PHAT/debug collision on `TargetMesh`; the plugin hides `TargetMesh` in game instead of disabling its editor visibility, so physics/collision debug remains available while playing.
+`PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy. Use PHAT/debug collision on `TargetMesh`; the plugin disables the TargetMesh main render pass instead of hiding the component, so physics/collision debug remains available while playing.
 
 If you need a custom collision channel, change `CollisionProfileName` on the pawn, but keep it blocking the objects that should dent the vehicle.
 
@@ -44,6 +46,7 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 
 - `RootBone`: the root/chassis bone that must never receive deformation offsets or generated deformation impulses.
 - `CollisionProfileName`: collision profile applied to `TargetMesh`; default is `PhysicsActor`.
+- `ForceBlockingPhysicsCollision`: forces `TargetMesh` to `PhysicsBody` and blocks all channels for easier PHAT collision debugging.
 - `SimulatePhysics`: enables physics simulation on `TargetMesh`; requires a valid Physics Asset.
 - `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.
 - `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.

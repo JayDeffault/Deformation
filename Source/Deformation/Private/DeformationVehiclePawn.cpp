@@ -12,6 +12,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 
 	TargetMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TargetMesh"));
 	SetRootComponent(TargetMesh);
+	TargetMesh->SetMobility(EComponentMobility::Movable);
 	TargetMesh->SetRelativeTransform(FTransform::Identity);
 	TargetMesh->SetCollisionProfileName(CollisionProfileName);
 	TargetMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -20,6 +21,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 
 	PoseableMesh = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("PoseableMesh"));
 	PoseableMesh->SetupAttachment(TargetMesh);
+	PoseableMesh->SetMobility(EComponentMobility::Movable);
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);
@@ -36,12 +38,20 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 void ADeformationVehiclePawn::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
+
+	ConfigureTargetMeshTransform(Transform);
+	ConfigureTargetMeshCollisionAndPhysics(false);
+	ConfigurePoseableMeshTransform(Transform);
 	ConfigureDeformation();
 }
 
 void ADeformationVehiclePawn::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ConfigureTargetMeshTransform(GetActorTransform());
+	ConfigureTargetMeshCollisionAndPhysics(bSimulatePhysics);
+	ConfigurePoseableMeshTransform(GetActorTransform());
 	ConfigureDeformation();
 }
 
@@ -52,28 +62,8 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 		return;
 	}
 
-	if (TargetMesh)
-	{
-		TargetMesh->SetRelativeTransform(FTransform::Identity);
-		TargetMesh->SetWorldTransform(GetActorTransform(), false, nullptr, ETeleportType::TeleportPhysics);
-		TargetMesh->SetCollisionProfileName(CollisionProfileName);
-		TargetMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		TargetMesh->SetNotifyRigidBodyCollision(true);
-		TargetMesh->SetGenerateOverlapEvents(false);
-		TargetMesh->SetSimulatePhysics(bSimulatePhysics);
-		if (bSimulatePhysics && bWakeRigidBodies)
-		{
-			TargetMesh->WakeAllRigidBodies();
-		}
-	}
-
-	if (PoseableMesh)
-	{
-		PoseableMesh->SetRelativeTransform(FTransform::Identity);
-		PoseableMesh->SetWorldTransform(TargetMesh ? TargetMesh->GetComponentTransform() : GetActorTransform());
-		PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		PoseableMesh->SetGenerateOverlapEvents(false);
-	}
+	ConfigureTargetMeshCollisionAndPhysics(GetWorld() && GetWorld()->IsGameWorld() && bSimulatePhysics);
+	ConfigurePoseableMeshTransform(GetActorTransform());
 
 	DeformationComponent->TargetMesh = TargetMesh;
 	DeformationComponent->PoseableMesh = PoseableMesh;
@@ -85,4 +75,63 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 
 	DeformationComponent->BindToMesh(TargetMesh);
 	DeformationComponent->SetPoseableMesh(PoseableMesh);
+}
+
+void ADeformationVehiclePawn::ConfigureTargetMeshTransform(const FTransform& ActorTransform)
+{
+	if (!TargetMesh)
+	{
+		return;
+	}
+
+	TargetMesh->SetMobility(EComponentMobility::Movable);
+	TargetMesh->SetRelativeTransform(FTransform::Identity);
+	TargetMesh->SetWorldTransform(ActorTransform, false, nullptr, ETeleportType::TeleportPhysics);
+}
+
+void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics(bool bEnablePhysics)
+{
+	if (!TargetMesh)
+	{
+		return;
+	}
+
+	TargetMesh->SetCollisionProfileName(CollisionProfileName);
+	TargetMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	TargetMesh->SetNotifyRigidBodyCollision(true);
+	TargetMesh->SetAllBodiesNotifyRigidBodyCollision(true);
+	TargetMesh->SetGenerateOverlapEvents(false);
+
+	if (bForceBlockingPhysicsCollision)
+	{
+		TargetMesh->SetCollisionObjectType(ECC_PhysicsBody);
+		TargetMesh->SetCollisionResponseToAllChannels(ECR_Block);
+	}
+
+	TargetMesh->SetSimulatePhysics(bEnablePhysics);
+	TargetMesh->SetAllBodiesSimulatePhysics(bEnablePhysics);
+
+	if (bEnablePhysics && bWakeRigidBodies)
+	{
+		TargetMesh->WakeAllRigidBodies();
+	}
+}
+
+void ADeformationVehiclePawn::ConfigurePoseableMeshTransform(const FTransform& ActorTransform)
+{
+	if (!PoseableMesh)
+	{
+		return;
+	}
+
+	PoseableMesh->SetMobility(EComponentMobility::Movable);
+	USceneComponent* ParentComponent = TargetMesh ? static_cast<USceneComponent*>(TargetMesh.Get()) : RootComponent;
+	if (ParentComponent)
+	{
+		PoseableMesh->AttachToComponent(ParentComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	}
+	PoseableMesh->SetRelativeTransform(FTransform::Identity);
+	PoseableMesh->SetWorldTransform(TargetMesh ? TargetMesh->GetComponentTransform() : ActorTransform, false, nullptr, ETeleportType::TeleportPhysics);
+	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PoseableMesh->SetGenerateOverlapEvents(false);
 }

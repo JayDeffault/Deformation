@@ -47,6 +47,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	FName CollisionProfileName = TEXT("PhysicsActor");
 
+	/** Force the TargetMesh object type and all collision responses to block so PHAT bodies are easy to verify/debug. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bForceBlockingPhysicsCollision = true;
+
 	/** Enable physics simulation on TargetMesh at setup time. Requires a valid Physics Asset on the Skeletal Mesh. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bSimulatePhysics = true;
@@ -58,4 +62,9 @@ public:
 	/** Push current pawn defaults into DeformationComponent and refresh the poseable mesh. */
 	UFUNCTION(BlueprintCallable, Category = "Deformation")
 	void ConfigureDeformation();
+
+private:
+	void ConfigureTargetMeshTransform(const FTransform& ActorTransform);
+	void ConfigureTargetMeshCollisionAndPhysics(bool bEnablePhysics);
+	void ConfigurePoseableMeshTransform(const FTransform& ActorTransform);
 };
