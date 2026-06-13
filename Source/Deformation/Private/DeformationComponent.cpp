@@ -131,10 +131,12 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 
 	if (bHideTargetMeshWhenUsingPoseable)
 	{
-		TargetMesh->SetVisibility(false, true);
-		TargetMesh->SetHiddenInGame(true, true);
+		TargetMesh->SetVisibility(false, false);
+		TargetMesh->SetHiddenInGame(true, false);
 		TargetMesh->SetRenderInMainPass(false);
 		TargetMesh->SetCastShadow(false);
+		PoseableMesh->SetVisibility(true, true);
+		PoseableMesh->SetHiddenInGame(false, true);
 	}
 
 	return RefreshDirectBoneTransforms();
