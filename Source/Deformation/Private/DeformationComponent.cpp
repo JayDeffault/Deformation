@@ -5,6 +5,7 @@
 #include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Actor.h"
+#include "PhysicsEngine/BodyInstance.h"
 
 UDeformationComponent::UDeformationComponent()
 {
@@ -263,15 +264,22 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 		return false;
 	}
 
-	// ImpactNormal usually points out of the hit surface, so moving along the inverse normal dents inward.
-	const FVector DeformationDirectionWS = -SafeNormalWS;
+	const FVector DeformationDirectionWS = ResolveInwardDeformationDirection(HitLocationWS, SafeNormalWS);
 	const FVector DeformationDirectionCS = TargetMesh->GetComponentTransform().InverseTransformVectorNoScale(DeformationDirectionWS).GetSafeNormal();
 
 	FDeformationBoneState& State = FindOrAddState(BoneName);
+	const FVector PreviousOffsetCS = State.OffsetCS;
 	State.OffsetCS += DeformationDirectionCS * OffsetAmount;
 	State.OffsetCS = State.OffsetCS.GetClampedToMaxSize(Settings->MaxOffset);
+	const FVector AppliedDeltaCS = State.OffsetCS - PreviousOffsetCS;
+	const FVector AppliedDeltaWS = TargetMesh->GetComponentTransform().TransformVectorNoScale(AppliedDeltaCS);
 	State.LastImpulse = NormalImpulse;
 	State.LastHitLocationWS = HitLocationWS;
+
+	if (bMovePhysicsBodyWithDeformation && !AppliedDeltaWS.IsNearlyZero())
+	{
+		MovePhysicsBodyByOffset(BoneName, AppliedDeltaWS);
+	}
 
 	if (bApplyPhysicsImpulse)
 	{
@@ -340,6 +348,29 @@ FDeformationBoneState& UDeformationComponent::FindOrAddState(FName BoneName)
 	return BoneStates.Add(BoneName, NewState);
 }
 
+FVector UDeformationComponent::ResolveInwardDeformationDirection(const FVector& HitLocationWS, const FVector& HitNormalWS) const
+{
+	if (!TargetMesh)
+	{
+		return -HitNormalWS.GetSafeNormal();
+	}
+
+	const FVector ToMeshCenterWS = (TargetMesh->Bounds.Origin - HitLocationWS).GetSafeNormal();
+	FVector CandidateDirectionWS = -HitNormalWS.GetSafeNormal();
+
+	if (CandidateDirectionWS.IsNearlyZero())
+	{
+		return ToMeshCenterWS.IsNearlyZero() ? FVector::ZeroVector : ToMeshCenterWS;
+	}
+
+	if (!ToMeshCenterWS.IsNearlyZero() && FVector::DotProduct(CandidateDirectionWS, ToMeshCenterWS) < 0.0f)
+	{
+		CandidateDirectionWS *= -1.0f;
+	}
+
+	return CandidateDirectionWS;
+}
+
 void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const
 {
 	if (IsRootBone(BoneName))
@@ -360,6 +391,25 @@ void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, cons
 
 	const FVector CurrentLocationCS = PoseableMesh->GetBoneLocationByName(BoneName, EBoneSpaces::ComponentSpace);
 	PoseableMesh->SetBoneLocationByName(BoneName, CurrentLocationCS + OffsetCS, EBoneSpaces::ComponentSpace);
+}
+
+void UDeformationComponent::MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS) const
+{
+	if (!TargetMesh || BoneName.IsNone() || IsRootBone(BoneName) || OffsetWS.IsNearlyZero())
+	{
+		return;
+	}
+
+	FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BoneName);
+	if (!BodyInstance)
+	{
+		return;
+	}
+
+	FTransform BodyTransform = BodyInstance->GetUnrealWorldTransform();
+	BodyTransform.AddToTranslation(OffsetWS);
+	BodyInstance->SetBodyTransform(BodyTransform, ETeleportType::TeleportPhysics);
+	TargetMesh->WakeRigidBody(BoneName);
 }
 
 void UDeformationComponent::RemoveRootBoneState()

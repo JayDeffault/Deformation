@@ -113,6 +113,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bApplyPhysicsImpulse = true;
 
+	/** If true, the PHAT body bound to the hit bone is teleported inward by the same accepted deformation delta. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bMovePhysicsBodyWithDeformation = true;
+
 	/** If true, generated AddImpulse uses velocity change mode and is independent from body mass. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bVelocityChange = false;
@@ -182,7 +186,9 @@ private:
 	const FDeformationBoneSettings* FindSettings(FName BoneName) const;
 	FName ResolveHitBone(const FHitResult& Hit) const;
 	FDeformationBoneState& FindOrAddState(FName BoneName);
+	FVector ResolveInwardDeformationDirection(const FVector& HitLocationWS, const FVector& HitNormalWS) const;
 	void ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const;
+	void MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS) const;
 	void RemoveRootBoneState();
 
 	UPROPERTY(Transient)

@@ -40,7 +40,7 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 
 ## How deformation works
 
-`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, and writes that offset to the same bone on `PoseableMesh` with `SetBoneLocationByName`.
+`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, moves the matching PHAT body inward, and writes that offset to the same bone on `PoseableMesh` with `SetBoneLocationByName`.
 
 Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from relative velocity via `KinematicHitImpulseScale`. That lets collision events from kinematic bodies still move bones and create visible dents.
 
@@ -53,10 +53,12 @@ Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates 
 - `EnableGravity`: enables gravity on `TargetMesh`; enabled by default.
 - `UseKinematicPhysicsBodies`: disables full simulation and keeps PHAT bodies attached to the pawn transform for kinematic collision tests.
 - `EstimateKinematicHitImpulse`: estimates dent strength from relative velocity when kinematic hits have zero impulse.
+- Inward-only deformation: the hit normal is compared against the direction from impact point to mesh center, and flipped when needed so dents do not push outward.
 - `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.
 - `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.
 - `BoneSettings`: optional per-bone overrides.
 - `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
+- `MovePhysicsBodyWithDeformation`: teleports the impacted PHAT body by the accepted inward dent delta so collision bodies move with the visible dent.
 - `ApplyPhysicsImpulse`: also pushes the impacted physics body inward when a valid deformation hit is accepted.
 - `RecoverySpeed`: keep `0` for permanent dents, or set above `0` for dents that return toward zero.
 
