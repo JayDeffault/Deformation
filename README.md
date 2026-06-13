@@ -7,14 +7,15 @@ Runtime Unreal Engine plugin for simple skeletal vehicle dent deformation.
 Use `ADeformationVehiclePawn`.
 
 1. Create a Blueprint from `DeformationVehiclePawn`.
-2. Select the root `TargetMesh` component and assign your vehicle Skeletal Mesh asset there.
+2. Select `TargetMesh` and assign your vehicle Skeletal Mesh asset there.
 3. Make sure the Skeletal Mesh has the Physics Asset you configured in PHAT.
 4. Set `RootBone` to the chassis/root bone that must never move.
-5. Place the Blueprint anywhere in the level and play.
+5. Place/move/attach the Blueprint anywhere; `PawnRoot`, `TargetMesh`, and `PoseableMesh` all share relative identity, so they follow the pawn transform.
 
 The pawn already contains and configures:
 
-- `TargetMesh` as the RootComponent for collision, PHAT physics bodies, hit events, and physics simulation.
+- `PawnRoot` as the root scene component that owns the actor transform.
+- `TargetMesh` as the PHAT collision mesh using kinematic physics bodies by default.
 - `PoseableMesh` as a child visual copy whose bones are moved directly from C++.
 - `DeformationComponent` bound to both meshes with direct deformation enabled.
 
@@ -24,12 +25,13 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 
 `DeformationVehiclePawn` applies these defaults to `TargetMesh` in construction and at BeginPlay:
 
-- `TargetMesh` keeps relative transform identity under the Blueprint/Pawn, so it follows the parent Blueprint transform instead of being forced to world zero.
+- `TargetMesh` and `PoseableMesh` are attached to `PawnRoot` and keep relative transform identity, so both repeat `ADeformationVehiclePawn` transforms.
 - `CollisionProfileName = PhysicsActor`.
 - `CollisionEnabled = QueryAndPhysics`.
 - `Simulation Generates Hit Events` is enabled with `SetNotifyRigidBodyCollision(true)` and `SetAllBodiesNotifyRigidBodyCollision(true)`.
+- `UseKinematicPhysicsBodies` is enabled by default: PHAT bodies stay attached to bones, block collisions, and report hit bone names, while the pawn transform continues to drive the vehicle.
 - When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
-- `Simulate Physics` is enabled at BeginPlay with both `SetSimulatePhysics` and `SetAllBodiesSimulatePhysics`.
+- Full `Simulate Physics` is disabled by default. Enable it only if you want Chaos to simulate the whole skeletal mesh instead of kinematic PHAT bodies.
 - All rigid bodies are woken at setup time.
 
 `PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy. Use PHAT/debug collision on `TargetMesh`; the plugin disables the TargetMesh main render pass instead of hiding the component, so physics/collision debug remains available while playing.
@@ -38,16 +40,18 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 
 ## How deformation works
 
-`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted physics body bone, converts collision normal impulse into an inward component-space offset, and writes that offset to the same bone on `PoseableMesh` with `SetBoneLocationByName`.
+`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, and writes that offset to the same bone on `PoseableMesh` with `SetBoneLocationByName`.
 
-`TargetMesh` owns collision and physics. `PoseableMesh` follows `TargetMesh` at relative transform identity, copies its mesh/materials, and renders the deformed result through the Blueprint/Pawn transform rather than being placed at world zero.
+Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from relative velocity via `KinematicHitImpulseScale`. That lets collision events from kinematic bodies still move bones and create visible dents.
 
 ## Important settings
 
 - `RootBone`: the root/chassis bone that must never receive deformation offsets or generated deformation impulses.
 - `CollisionProfileName`: collision profile applied to `TargetMesh`; default is `PhysicsActor`.
 - `ForceBlockingPhysicsCollision`: forces `TargetMesh` to `PhysicsBody` and blocks all channels for easier PHAT collision debugging.
-- `SimulatePhysics`: enables physics simulation on `TargetMesh`; requires a valid Physics Asset.
+- `UseKinematicPhysicsBodies`: keeps PHAT bodies kinematic and attached to bones; this is the default deformation mode.
+- `SimulatePhysics`: enables full skeletal physics simulation only when `UseKinematicPhysicsBodies` is disabled.
+- `EstimateKinematicHitImpulse`: estimates dent strength from relative velocity when kinematic hits have zero impulse.
 - `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.
 - `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.
 - `BoneSettings`: optional per-bone overrides.

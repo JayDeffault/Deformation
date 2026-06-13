@@ -8,13 +8,15 @@
 
 class UDeformationComponent;
 class UPoseableMeshComponent;
+class USceneComponent;
 class USkeletalMeshComponent;
 
 /**
  * Ready-to-use pawn for skeletal vehicle deformation.
  *
- * Put your Skeletal Mesh asset on TargetMesh (the RootComponent), set RootBone, and the pawn wires the collision mesh,
- * visible poseable mesh, and deformation component together automatically.
+ * Put your Skeletal Mesh asset on TargetMesh, set RootBone, and the pawn wires the collision mesh, visible poseable
+ * mesh, and deformation component together automatically. TargetMesh and PoseableMesh are children of PawnRoot so they
+ * inherit the ADeformationVehiclePawn transform.
  */
 UCLASS(Blueprintable, BlueprintType, ClassGroup = (Deformation))
 class DEFORMATION_API ADeformationVehiclePawn : public APawn
@@ -27,7 +29,11 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 
-	/** Collision/physics skeletal mesh. This is the RootComponent; assign your vehicle Skeletal Mesh here. */
+	/** Root scene component. Move/rotate/scale the pawn; TargetMesh and PoseableMesh follow this transform. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Deformation")
+	TObjectPtr<USceneComponent> PawnRoot;
+
+	/** Collision/physics-asset skeletal mesh. Assign your vehicle Skeletal Mesh here. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Deformation")
 	TObjectPtr<USkeletalMeshComponent> TargetMesh;
 
@@ -51,20 +57,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bForceBlockingPhysicsCollision = true;
 
-	/** Enable physics simulation on TargetMesh at setup time. Requires a valid Physics Asset on the Skeletal Mesh. */
+	/** Keep PHAT bodies kinematic by default: they collide and report hits, but the pawn transform drives the vehicle. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
-	bool bSimulatePhysics = true;
+	bool bUseKinematicPhysicsBodies = true;
 
-	/** Wake skeletal bodies after physics is enabled so hit events and impulses start working immediately. */
+	/** Enable full skeletal physics simulation instead of kinematic PHAT bodies. Leave false for vehicle dent deformation. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bSimulatePhysics = false;
+
+	/** Wake skeletal bodies after physics is configured so hit events and impulses start working immediately. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bWakeRigidBodies = true;
 
-	/** Push current pawn defaults into DeformationComponent and refresh the poseable mesh. */
+	/** Push current pawn defaults into meshes and DeformationComponent. */
 	UFUNCTION(BlueprintCallable, Category = "Deformation")
 	void ConfigureDeformation();
 
 private:
 	void ConfigureTargetMeshTransform();
-	void ConfigureTargetMeshCollisionAndPhysics(bool bEnablePhysics);
+	void ConfigureTargetMeshCollisionAndPhysics();
 	void ConfigurePoseableMeshTransform();
 };

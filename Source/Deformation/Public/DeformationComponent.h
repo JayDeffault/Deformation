@@ -117,6 +117,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bVelocityChange = false;
 
+	/** Estimate impact impulse from relative velocity when kinematic PHAT bodies report zero NormalImpulse. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bEstimateKinematicHitImpulse = true;
+
+	/** Relative speed multiplier used when NormalImpulse is zero for kinematic PHAT hits. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics", meta = (ClampMin = "0.0"))
+	float KinematicHitImpulseScale = 250.0f;
+
 	/** Optional automatic interpolation back to zero; 0 keeps dents permanently until ResetDeformation is called. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation", meta = (ClampMin = "0.0"))
 	float RecoverySpeed = 0.0f;

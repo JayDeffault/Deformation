@@ -3,6 +3,7 @@
 #include "DeformationVehiclePawn.h"
 
 #include "Components/PoseableMeshComponent.h"
+#include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DeformationComponent.h"
 
@@ -10,8 +11,12 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
+	PawnRoot = CreateDefaultSubobject<USceneComponent>(TEXT("PawnRoot"));
+	SetRootComponent(PawnRoot);
+	PawnRoot->SetMobility(EComponentMobility::Movable);
+
 	TargetMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TargetMesh"));
-	SetRootComponent(TargetMesh);
+	TargetMesh->SetupAttachment(PawnRoot);
 	TargetMesh->SetMobility(EComponentMobility::Movable);
 	TargetMesh->SetRelativeTransform(FTransform::Identity);
 	TargetMesh->SetCollisionProfileName(CollisionProfileName);
@@ -20,7 +25,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 	TargetMesh->SetGenerateOverlapEvents(false);
 
 	PoseableMesh = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("PoseableMesh"));
-	PoseableMesh->SetupAttachment(TargetMesh);
+	PoseableMesh->SetupAttachment(PawnRoot);
 	PoseableMesh->SetMobility(EComponentMobility::Movable);
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -33,37 +38,31 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 	DeformationComponent->bAutoCreatePoseableMesh = false;
 	DeformationComponent->bHideTargetMeshWhenUsingPoseable = true;
 	DeformationComponent->bOnlyConfiguredBones = false;
+	DeformationComponent->bApplyPhysicsImpulse = !bUseKinematicPhysicsBodies;
 }
 
 void ADeformationVehiclePawn::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-
-	ConfigureTargetMeshTransform();
-	ConfigureTargetMeshCollisionAndPhysics(false);
-	ConfigurePoseableMeshTransform();
 	ConfigureDeformation();
 }
 
 void ADeformationVehiclePawn::BeginPlay()
 {
 	Super::BeginPlay();
-
-	ConfigureTargetMeshTransform();
-	ConfigureTargetMeshCollisionAndPhysics(bSimulatePhysics);
-	ConfigurePoseableMeshTransform();
 	ConfigureDeformation();
 }
 
 void ADeformationVehiclePawn::ConfigureDeformation()
 {
+	ConfigureTargetMeshTransform();
+	ConfigureTargetMeshCollisionAndPhysics();
+	ConfigurePoseableMeshTransform();
+
 	if (!DeformationComponent)
 	{
 		return;
 	}
-
-	ConfigureTargetMeshCollisionAndPhysics(GetWorld() && GetWorld()->IsGameWorld() && bSimulatePhysics);
-	ConfigurePoseableMeshTransform();
 
 	DeformationComponent->TargetMesh = TargetMesh;
 	DeformationComponent->PoseableMesh = PoseableMesh;
@@ -72,6 +71,7 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 	DeformationComponent->bAutoCreatePoseableMesh = false;
 	DeformationComponent->bHideTargetMeshWhenUsingPoseable = true;
 	DeformationComponent->bOnlyConfiguredBones = false;
+	DeformationComponent->bApplyPhysicsImpulse = !bUseKinematicPhysicsBodies;
 
 	DeformationComponent->BindToMesh(TargetMesh);
 	DeformationComponent->SetPoseableMesh(PoseableMesh);
@@ -85,10 +85,11 @@ void ADeformationVehiclePawn::ConfigureTargetMeshTransform()
 	}
 
 	TargetMesh->SetMobility(EComponentMobility::Movable);
+	TargetMesh->AttachToComponent(PawnRoot ? PawnRoot.Get() : RootComponent.Get(), FAttachmentTransformRules::SnapToTargetIncludingScale);
 	TargetMesh->SetRelativeTransform(FTransform::Identity);
 }
 
-void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics(bool bEnablePhysics)
+void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics()
 {
 	if (!TargetMesh)
 	{
@@ -107,10 +108,18 @@ void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics(bool bEnabl
 		TargetMesh->SetCollisionResponseToAllChannels(ECR_Block);
 	}
 
-	TargetMesh->SetSimulatePhysics(bEnablePhysics);
-	TargetMesh->SetAllBodiesSimulatePhysics(bEnablePhysics);
+	const bool bEnableSimulation = bSimulatePhysics && !bUseKinematicPhysicsBodies;
+	TargetMesh->SetSimulatePhysics(bEnableSimulation);
+	TargetMesh->SetAllBodiesSimulatePhysics(bEnableSimulation);
 
-	if (bEnablePhysics && bWakeRigidBodies)
+	// With kinematic PHAT bodies the skeletal mesh stays attached to the pawn, but the Physics Asset bodies still block
+	// and generate hit events for the bones they are bound to.
+	if (bUseKinematicPhysicsBodies)
+	{
+		TargetMesh->SetRelativeTransform(FTransform::Identity);
+	}
+
+	if (bWakeRigidBodies)
 	{
 		TargetMesh->WakeAllRigidBodies();
 	}
@@ -124,11 +133,7 @@ void ADeformationVehiclePawn::ConfigurePoseableMeshTransform()
 	}
 
 	PoseableMesh->SetMobility(EComponentMobility::Movable);
-	USceneComponent* MeshAttachParent = TargetMesh ? static_cast<USceneComponent*>(TargetMesh.Get()) : RootComponent.Get();
-	if (MeshAttachParent)
-	{
-		PoseableMesh->AttachToComponent(MeshAttachParent, FAttachmentTransformRules::SnapToTargetIncludingScale);
-	}
+	PoseableMesh->AttachToComponent(PawnRoot ? PawnRoot.Get() : RootComponent.Get(), FAttachmentTransformRules::SnapToTargetIncludingScale);
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);

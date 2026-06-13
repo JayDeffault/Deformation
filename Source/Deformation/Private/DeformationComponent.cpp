@@ -118,7 +118,10 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 	{
 		PoseableMesh->SetMaterial(MaterialIndex, TargetMesh->GetMaterial(MaterialIndex));
 	}
-	PoseableMesh->AttachToComponent(TargetMesh, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	if (!PoseableMesh->GetAttachParent())
+	{
+		PoseableMesh->AttachToComponent(TargetMesh, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	}
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);
@@ -284,7 +287,16 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 void UDeformationComponent::HandleMeshHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	const FName BoneName = ResolveHitBone(Hit);
-	ApplyDeformationImpulse(BoneName, Hit.ImpactPoint, Hit.ImpactNormal, NormalImpulse.Size());
+	float ImpactImpulse = NormalImpulse.Size();
+
+	if (ImpactImpulse <= KINDA_SMALL_NUMBER && bEstimateKinematicHitImpulse)
+	{
+		const FVector HitVelocity = HitComponent ? HitComponent->GetComponentVelocity() : FVector::ZeroVector;
+		const FVector OtherVelocity = OtherComp ? OtherComp->GetComponentVelocity() : FVector::ZeroVector;
+		ImpactImpulse = (OtherVelocity - HitVelocity).Size() * KinematicHitImpulseScale;
+	}
+
+	ApplyDeformationImpulse(BoneName, Hit.ImpactPoint, Hit.ImpactNormal, ImpactImpulse);
 }
 
 const FDeformationBoneSettings* UDeformationComponent::FindSettings(FName BoneName) const
@@ -302,14 +314,15 @@ const FDeformationBoneSettings* UDeformationComponent::FindSettings(FName BoneNa
 
 FName UDeformationComponent::ResolveHitBone(const FHitResult& Hit) const
 {
-	if (!Hit.BoneName.IsNone())
-	{
-		return Hit.BoneName;
-	}
-
+	// For OnComponentHit on TargetMesh, MyBoneName is the PHAT body/bone that belongs to this vehicle.
 	if (!Hit.MyBoneName.IsNone())
 	{
 		return Hit.MyBoneName;
+	}
+
+	if (!Hit.BoneName.IsNone())
+	{
+		return Hit.BoneName;
 	}
 
 	return NAME_None;
