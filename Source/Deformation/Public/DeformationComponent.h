@@ -125,6 +125,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bMovePhysicsBodyWithDeformation = true;
 
+	/** If true, only kinematic PHAT bodies can receive deformation; simulated bodies remain free for constraints. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bDeformOnlyKinematicBodies = true;
+
 	/** If true, generated AddImpulse uses velocity change mode and is independent from body mass. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bVelocityChange = false;
@@ -194,6 +198,7 @@ private:
 	const FDeformationBoneSettings* FindSettings(FName BoneName) const;
 	FName ResolveHitBone(const FHitResult& Hit) const;
 	FName FindClosestDeformableBody(const FVector& HitLocationWS) const;
+	bool CanDeformPhysicsBody(FName BoneName) const;
 	FDeformationBoneState& FindOrAddState(FName BoneName);
 	FVector ResolveInwardDeformationDirection(const FVector& HitLocationWS, const FVector& HitNormalWS) const;
 	void ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const;

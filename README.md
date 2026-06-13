@@ -31,7 +31,7 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 - `CollisionEnabled = QueryAndPhysics`.
 - `Simulation Generates Hit Events` is enabled with `SetNotifyRigidBodyCollision(true)` and `SetAllBodiesNotifyRigidBodyCollision(true)`.
 - `Simulate Physics` and gravity are enabled by default on `TargetMesh`.
-- `UseKinematicPhysicsBodies` is enabled by default: `RootBone` remains simulated, and child PHAT bodies are kinematic collision bodies that the deformation component moves inward on impacts. If `RootBone` is empty, the first skeleton bone is used as the simulated root. After switching bodies to kinematic, the pawn realigns every non-root body once to its current bone transform with teleport physics so they do not spawn at world zero.
+- `UseKinematicPhysicsBodies` is enabled by default: `RootBone` remains simulated, PHAT bodies explicitly marked `Simulated` stay simulated for constraints (for example doors), and the remaining child bodies stay kinematic for deformation. If `RootBone` is empty, the first skeleton bone is used as the simulated root. After switching bodies to kinematic, the pawn realigns every non-simulated non-root body once to its current bone transform with teleport physics so they do not spawn at world zero.
 - When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
 - All rigid bodies are woken at setup time.
 
@@ -47,6 +47,8 @@ Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates 
 
 Each bone deforms one-way only. Once a bone has an offset, later hits must point in the same component-space deformation direction to add more depth; opposite hits are ignored, so a dent cannot be pushed back out. For per-bone control, enable `bUseCustomDeformationDirection` in a `BoneSettings` entry and set `DeformationDirectionCS` to the exact component-space direction that bone is allowed to move.
 
+Only kinematic PHAT bodies deform by default. Simulated bodies are left alone so constraints such as doors/hood/trunk hinges can move freely; put separate kinematic deformation bodies on those parts if you want local dents on a simulated door.
+
 ## Important settings
 
 - `RootBone`: the root/chassis bone that must never receive deformation offsets or generated deformation impulses.
@@ -54,7 +56,8 @@ Each bone deforms one-way only. Once a bone has an offset, later hits must point
 - `ForceBlockingPhysicsCollision`: forces `TargetMesh` to `PhysicsBody` and blocks all channels for easier PHAT collision debugging.
 - `SimulatePhysics`: enables skeletal physics on `TargetMesh`; enabled by default.
 - `EnableGravity`: enables gravity on `TargetMesh`; enabled by default.
-- `UseKinematicPhysicsBodies`: keeps bodies below `RootBone` kinematic while `RootBone` stays simulated; enabled by default. If `RootBone` is empty, the first skeleton bone is used. Non-root PHAT bodies are aligned back to their bone transforms during setup.
+- `UseKinematicPhysicsBodies`: keeps deformation bodies kinematic while `RootBone` and PHAT bodies marked `Simulated` stay simulated; enabled by default. If `RootBone` is empty, the first skeleton bone is used. Non-simulated non-root PHAT bodies are aligned back to their bone transforms during setup.
+- `SyncActorTransformToSimulatedRoot`: keeps the Blueprint/Actor transform synchronized to the simulated root body after physics movement, so the placed pawn does not visually/physically separate from its Blueprint transform after landing.
 - `EstimateKinematicHitImpulse`: estimates dent strength from relative velocity when kinematic hits have zero impulse.
 - Inward-only deformation: the hit normal is compared against the direction from impact point to mesh center, and flipped when needed so dents do not push outward.
 - `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.
@@ -63,6 +66,7 @@ Each bone deforms one-way only. Once a bone has an offset, later hits must point
 - `bUseCustomDeformationDirection` / `DeformationDirectionCS`: optional per-bone one-way component-space dent direction.
 - `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
 - `MovePhysicsBodyWithDeformation`: teleports the impacted PHAT body by the accepted inward dent delta while keeping that body kinematic. The poseable mesh also receives the stored offset directly, so the visual dent remains visible even when Chaos does not expose a kinematic body move as a skeletal pose change.
+- `DeformOnlyKinematicBodies`: enabled by default; simulated bodies are ignored by deformation and remain available for constraints.
 - `ApplyPhysicsImpulse`: also pushes the impacted physics body inward when a valid deformation hit is accepted.
 - `RecoverySpeed`: keep `0` for permanent dents, or set above `0` for dents that return toward zero.
 

@@ -12,7 +12,8 @@
 
 ADeformationVehiclePawn::ADeformationVehiclePawn()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
 
 	TargetMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TargetMesh"));
 	SetRootComponent(TargetMesh);
@@ -57,6 +58,12 @@ void ADeformationVehiclePawn::BeginPlay()
 {
 	Super::BeginPlay();
 	ConfigureDeformation();
+}
+
+void ADeformationVehiclePawn::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	SyncActorTransformToSimulatedRoot();
 }
 
 void ADeformationVehiclePawn::ConfigureDeformation()
@@ -126,13 +133,23 @@ void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics()
 		const FName SimulationRootBone = GetEffectiveSimulationRootBone();
 		TargetMesh->SetSimulatePhysics(true);
 
-		// Start from a fully kinematic skeletal asset, then enable simulation only on the root/chassis body.
-		// This prevents child PHAT bodies from behaving like independent simulated bodies and falling through the floor.
+		// Start from a fully kinematic skeletal asset, then enable simulation only on RootBone and PHAT bodies that are
+		// explicitly marked Simulated. This keeps door constraints free while deformation helper bodies stay kinematic.
 		TargetMesh->SetAllBodiesSimulatePhysics(false);
-		if (!SimulationRootBone.IsNone())
+		if (UPhysicsAsset* PhysicsAsset = TargetMesh->GetPhysicsAsset())
 		{
-			TargetMesh->SetAllBodiesBelowSimulatePhysics(SimulationRootBone, true, true);
-			TargetMesh->SetAllBodiesBelowSimulatePhysics(SimulationRootBone, false, false);
+			for (USkeletalBodySetup* BodySetup : PhysicsAsset->SkeletalBodySetups)
+			{
+				if (!BodySetup || BodySetup->BoneName.IsNone())
+				{
+					continue;
+				}
+
+				if (FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BodySetup->BoneName))
+				{
+					BodyInstance->SetInstanceSimulatePhysics(ShouldBodySimulate(BodySetup, SimulationRootBone));
+				}
+			}
 		}
 	}
 	else
@@ -198,6 +215,11 @@ void ADeformationVehiclePawn::AlignKinematicBodiesToCurrentBones()
 			continue;
 		}
 
+		if (BodyInstance->IsInstanceSimulatingPhysics())
+		{
+			continue;
+		}
+
 		FTransform DesiredBodyTransform = TargetMesh->GetBoneTransform(BoneIndex);
 		if (DeformationComponent)
 		{
@@ -224,4 +246,37 @@ FName ADeformationVehiclePawn::GetEffectiveSimulationRootBone() const
 	}
 
 	return NAME_None;
+}
+
+bool ADeformationVehiclePawn::ShouldBodySimulate(const USkeletalBodySetup* BodySetup, FName SimulationRootBone) const
+{
+	if (!BodySetup || BodySetup->BoneName.IsNone())
+	{
+		return false;
+	}
+
+	if (BodySetup->BoneName == SimulationRootBone)
+	{
+		return true;
+	}
+
+	return BodySetup->PhysicsType == PhysType_Simulated;
+}
+
+void ADeformationVehiclePawn::SyncActorTransformToSimulatedRoot()
+{
+	if (!bSyncActorTransformToSimulatedRoot || !TargetMesh || !bSimulatePhysics)
+	{
+		return;
+	}
+
+	const FName SimulationRootBone = GetEffectiveSimulationRootBone();
+	FBodyInstance* RootBodyInstance = SimulationRootBone.IsNone() ? nullptr : TargetMesh->GetBodyInstance(SimulationRootBone);
+	if (!RootBodyInstance || !RootBodyInstance->IsInstanceSimulatingPhysics())
+	{
+		return;
+	}
+
+	const FTransform RootBodyTransform = RootBodyInstance->GetUnrealWorldTransform();
+	SetActorLocationAndRotation(RootBodyTransform.GetLocation(), RootBodyTransform.GetRotation(), false, nullptr, ETeleportType::TeleportPhysics);
 }

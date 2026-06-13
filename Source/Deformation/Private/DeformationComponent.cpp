@@ -240,6 +240,11 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 		return false;
 	}
 
+	if (!CanDeformPhysicsBody(BoneName))
+	{
+		return false;
+	}
+
 	const FDeformationBoneSettings* Settings = FindSettings(BoneName);
 	if (!Settings)
 	{
@@ -356,12 +361,12 @@ const FDeformationBoneSettings* UDeformationComponent::FindSettings(FName BoneNa
 FName UDeformationComponent::ResolveHitBone(const FHitResult& Hit) const
 {
 	// For OnComponentHit on TargetMesh, MyBoneName is the PHAT body/bone that belongs to this vehicle.
-	if (!Hit.MyBoneName.IsNone() && !IsRootBone(Hit.MyBoneName))
+	if (!Hit.MyBoneName.IsNone() && !IsRootBone(Hit.MyBoneName) && CanDeformPhysicsBody(Hit.MyBoneName))
 	{
 		return Hit.MyBoneName;
 	}
 
-	if (!Hit.BoneName.IsNone() && !IsRootBone(Hit.BoneName))
+	if (!Hit.BoneName.IsNone() && !IsRootBone(Hit.BoneName) && CanDeformPhysicsBody(Hit.BoneName))
 	{
 		return Hit.BoneName;
 	}
@@ -394,6 +399,11 @@ FName UDeformationComponent::FindClosestDeformableBody(const FVector& HitLocatio
 			continue;
 		}
 
+		if (!CanDeformPhysicsBody(BodySetup->BoneName))
+		{
+			continue;
+		}
+
 		const FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BodySetup->BoneName);
 		const int32 BoneIndex = TargetMesh->GetBoneIndex(BodySetup->BoneName);
 		const FVector BodyLocationWS = BodyInstance
@@ -409,6 +419,22 @@ FName UDeformationComponent::FindClosestDeformableBody(const FVector& HitLocatio
 	}
 
 	return ClosestBone;
+}
+
+bool UDeformationComponent::CanDeformPhysicsBody(FName BoneName) const
+{
+	if (!TargetMesh || BoneName.IsNone() || IsRootBone(BoneName))
+	{
+		return false;
+	}
+
+	if (!bDeformOnlyKinematicBodies)
+	{
+		return true;
+	}
+
+	FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BoneName);
+	return BodyInstance && !BodyInstance->IsInstanceSimulatingPhysics();
 }
 
 FDeformationBoneState& UDeformationComponent::FindOrAddState(FName BoneName)
@@ -477,6 +503,11 @@ void UDeformationComponent::MovePhysicsBodyByOffset(FName BoneName, const FVecto
 
 	FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BoneName);
 	if (!BodyInstance)
+	{
+		return;
+	}
+
+	if (bDeformOnlyKinematicBodies && BodyInstance->IsInstanceSimulatingPhysics())
 	{
 		return;
 	}
