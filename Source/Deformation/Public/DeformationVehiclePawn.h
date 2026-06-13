@@ -57,11 +57,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bForceBlockingPhysicsCollision = true;
 
-	/** Keep PHAT bodies kinematic: they collide and report hits, but the pawn transform drives the vehicle. Disabled by default so the mesh uses Simulate Physics. */
+	/** Keep all bodies below RootBone kinematic while RootBone remains simulated. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
-	bool bUseKinematicPhysicsBodies = false;
+	bool bUseKinematicPhysicsBodies = true;
 
-	/** Enable full skeletal physics simulation by default so the vehicle falls/reacts under physics. */
+	/** Enable skeletal physics simulation. With kinematic bodies enabled, only RootBone remains simulated. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bSimulatePhysics = true;
 

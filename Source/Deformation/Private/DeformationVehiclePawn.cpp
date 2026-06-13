@@ -110,16 +110,15 @@ void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics()
 		TargetMesh->SetCollisionResponseToAllChannels(ECR_Block);
 	}
 
-	const bool bEnableSimulation = bSimulatePhysics && !bUseKinematicPhysicsBodies;
 	TargetMesh->SetEnableGravity(bEnableGravity);
-	TargetMesh->SetSimulatePhysics(bEnableSimulation);
-	TargetMesh->SetAllBodiesSimulatePhysics(bEnableSimulation);
+	TargetMesh->SetSimulatePhysics(bSimulatePhysics);
+	TargetMesh->SetAllBodiesSimulatePhysics(bSimulatePhysics);
 
-	// With kinematic PHAT bodies the skeletal mesh stays attached to the pawn, but the Physics Asset bodies still block
-	// and generate hit events for the bones they are bound to.
-	if (bUseKinematicPhysicsBodies)
+	// Vehicle setup: RootBone is simulated, all children below it are kinematic and stay attached to the skeleton.
+	// Those kinematic PHAT bodies are moved manually by UDeformationComponent when they are dented.
+	if (bSimulatePhysics && bUseKinematicPhysicsBodies && !RootBone.IsNone())
 	{
-		TargetMesh->SetRelativeTransform(FTransform::Identity);
+		TargetMesh->SetAllBodiesBelowSimulatePhysics(RootBone, false, false);
 	}
 
 	if (bWakeRigidBodies)
@@ -136,7 +135,7 @@ void ADeformationVehiclePawn::ConfigurePoseableMeshTransform()
 	}
 
 	PoseableMesh->SetMobility(EComponentMobility::Movable);
-	USceneComponent* MeshAttachParent = (bSimulatePhysics && !bUseKinematicPhysicsBodies && TargetMesh)
+	USceneComponent* MeshAttachParent = (bSimulatePhysics && TargetMesh)
 		? static_cast<USceneComponent*>(TargetMesh.Get())
 		: static_cast<USceneComponent*>(PawnRoot ? PawnRoot.Get() : RootComponent.Get());
 	if (MeshAttachParent)

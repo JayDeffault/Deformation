@@ -15,7 +15,7 @@ Use `ADeformationVehiclePawn`.
 The pawn already contains and configures:
 
 - `PawnRoot` as the root scene component that owns the actor transform.
-- `TargetMesh` as the PHAT collision mesh with `Simulate Physics` and gravity enabled by default.
+- `TargetMesh` as the PHAT collision mesh: `RootBone` is simulated, while bodies below it are kinematic by default.
 - `PoseableMesh` as a child visual copy whose bones are moved directly from C++.
 - `DeformationComponent` bound to both meshes with direct deformation enabled.
 
@@ -25,16 +25,16 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 
 `DeformationVehiclePawn` applies these defaults to `TargetMesh` in construction and at BeginPlay:
 
-- Before physics simulation starts, `TargetMesh` and `PoseableMesh` are attached under `PawnRoot` and keep relative transform identity. When full physics simulation is enabled, `TargetMesh` is driven by Chaos and `PoseableMesh` follows `TargetMesh`.
+- `TargetMesh` starts under `PawnRoot`, then physics simulates `RootBone`; all bodies below `RootBone` are set kinematic by default so they stay attached to the vehicle skeleton instead of falling away.
 - `CollisionProfileName = PhysicsActor`.
 - `CollisionEnabled = QueryAndPhysics`.
 - `Simulation Generates Hit Events` is enabled with `SetNotifyRigidBodyCollision(true)` and `SetAllBodiesNotifyRigidBodyCollision(true)`.
-- `Simulate Physics` and gravity are enabled by default, so the Skeletal Mesh should fall/react physically instead of hanging in the air.
+- `Simulate Physics` and gravity are enabled by default on `TargetMesh`.
+- `UseKinematicPhysicsBodies` is enabled by default: `RootBone` remains simulated, and child PHAT bodies are kinematic collision bodies that the deformation component moves inward on impacts.
 - When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
-- `UseKinematicPhysicsBodies` is available if you want PHAT bodies to stay attached to the pawn transform instead of full Chaos simulation.
 - All rigid bodies are woken at setup time.
 
-`PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy. During full physics simulation it follows `TargetMesh`; use PHAT/debug collision on `TargetMesh`.
+`PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy. It follows `TargetMesh` every tick so it does not stay at world zero while physics moves the vehicle; use PHAT/debug collision on `TargetMesh`.
 
 If you need a custom collision channel, change `CollisionProfileName` on the pawn, but keep it blocking the objects that should dent the vehicle.
 
@@ -49,9 +49,9 @@ Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates 
 - `RootBone`: the root/chassis bone that must never receive deformation offsets or generated deformation impulses.
 - `CollisionProfileName`: collision profile applied to `TargetMesh`; default is `PhysicsActor`.
 - `ForceBlockingPhysicsCollision`: forces `TargetMesh` to `PhysicsBody` and blocks all channels for easier PHAT collision debugging.
-- `SimulatePhysics`: enables full skeletal physics simulation; enabled by default.
+- `SimulatePhysics`: enables skeletal physics on `TargetMesh`; enabled by default.
 - `EnableGravity`: enables gravity on `TargetMesh`; enabled by default.
-- `UseKinematicPhysicsBodies`: disables full simulation and keeps PHAT bodies attached to the pawn transform for kinematic collision tests.
+- `UseKinematicPhysicsBodies`: keeps bodies below `RootBone` kinematic while `RootBone` stays simulated; enabled by default.
 - `EstimateKinematicHitImpulse`: estimates dent strength from relative velocity when kinematic hits have zero impulse.
 - Inward-only deformation: the hit normal is compared against the direction from impact point to mesh center, and flipped when needed so dents do not push outward.
 - `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.

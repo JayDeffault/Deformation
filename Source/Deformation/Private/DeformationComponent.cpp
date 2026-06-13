@@ -44,12 +44,7 @@ void UDeformationComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (BoneStates.Num() == 0)
-	{
-		return;
-	}
-
-	if (RecoverySpeed > 0.0f)
+	if (BoneStates.Num() > 0 && RecoverySpeed > 0.0f)
 	{
 		for (auto It = BoneStates.CreateIterator(); It; ++It)
 		{
@@ -62,6 +57,7 @@ void UDeformationComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 		}
 	}
 
+	// Keep the visible poseable mesh synchronized with the simulated TargetMesh even before the first dent.
 	RefreshDirectBoneTransforms();
 }
 
