@@ -11,6 +11,7 @@ UDeformationComponent::UDeformationComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 	DefaultBoneSettings.BoneName = NAME_None;
+	DefaultBoneSettings.MinImpulse = 0.0f;
 }
 
 void UDeformationComponent::BeginPlay()
@@ -75,6 +76,7 @@ void UDeformationComponent::BindToMesh(USkeletalMeshComponent* MeshComponent)
 	if (TargetMesh)
 	{
 		TargetMesh->SetNotifyRigidBodyCollision(true);
+		TargetMesh->SetAllBodiesNotifyRigidBodyCollision(true);
 		TargetMesh->OnComponentHit.AddUniqueDynamic(this, &UDeformationComponent::HandleMeshHit);
 	}
 
@@ -118,7 +120,6 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 	}
 	PoseableMesh->AttachToComponent(TargetMesh, FAttachmentTransformRules::SnapToTargetIncludingScale);
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
-	PoseableMesh->SetWorldTransform(TargetMesh->GetComponentTransform());
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);
 	PoseableMesh->SetVisibility(true, true);

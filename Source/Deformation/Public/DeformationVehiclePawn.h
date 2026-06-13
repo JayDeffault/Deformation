@@ -64,7 +64,7 @@ public:
 	void ConfigureDeformation();
 
 private:
-	void ConfigureTargetMeshTransform(const FTransform& ActorTransform);
+	void ConfigureTargetMeshTransform();
 	void ConfigureTargetMeshCollisionAndPhysics(bool bEnablePhysics);
-	void ConfigurePoseableMeshTransform(const FTransform& ActorTransform);
+	void ConfigurePoseableMeshTransform();
 };

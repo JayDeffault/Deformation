@@ -24,12 +24,12 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 
 `DeformationVehiclePawn` applies these defaults to `TargetMesh` in construction and at BeginPlay:
 
-- `TargetMesh` is the RootComponent and is forced back to relative transform identity, then placed at the Blueprint actor transform.
+- `TargetMesh` keeps relative transform identity under the Blueprint/Pawn, so it follows the parent Blueprint transform instead of being forced to world zero.
 - `CollisionProfileName = PhysicsActor`.
 - `CollisionEnabled = QueryAndPhysics`.
 - `Simulation Generates Hit Events` is enabled with `SetNotifyRigidBodyCollision(true)` and `SetAllBodiesNotifyRigidBodyCollision(true)`.
 - When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
-- `Simulate Physics` is enabled by default with both `SetSimulatePhysics` and `SetAllBodiesSimulatePhysics`.
+- `Simulate Physics` is enabled at BeginPlay with both `SetSimulatePhysics` and `SetAllBodiesSimulatePhysics`.
 - All rigid bodies are woken at setup time.
 
 `PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy. Use PHAT/debug collision on `TargetMesh`; the plugin disables the TargetMesh main render pass instead of hiding the component, so physics/collision debug remains available while playing.
@@ -40,7 +40,7 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 
 `UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted physics body bone, converts collision normal impulse into an inward component-space offset, and writes that offset to the same bone on `PoseableMesh` with `SetBoneLocationByName`.
 
-`TargetMesh` owns collision and physics. `PoseableMesh` follows `TargetMesh` at relative transform identity, copies its mesh/materials, and renders the deformed result at the actor's placed transform rather than at world zero.
+`TargetMesh` owns collision and physics. `PoseableMesh` follows `TargetMesh` at relative transform identity, copies its mesh/materials, and renders the deformed result through the Blueprint/Pawn transform rather than being placed at world zero.
 
 ## Important settings
 

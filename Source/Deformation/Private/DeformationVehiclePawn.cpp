@@ -39,9 +39,9 @@ void ADeformationVehiclePawn::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
-	ConfigureTargetMeshTransform(Transform);
+	ConfigureTargetMeshTransform();
 	ConfigureTargetMeshCollisionAndPhysics(false);
-	ConfigurePoseableMeshTransform(Transform);
+	ConfigurePoseableMeshTransform();
 	ConfigureDeformation();
 }
 
@@ -49,9 +49,9 @@ void ADeformationVehiclePawn::BeginPlay()
 {
 	Super::BeginPlay();
 
-	ConfigureTargetMeshTransform(GetActorTransform());
+	ConfigureTargetMeshTransform();
 	ConfigureTargetMeshCollisionAndPhysics(bSimulatePhysics);
-	ConfigurePoseableMeshTransform(GetActorTransform());
+	ConfigurePoseableMeshTransform();
 	ConfigureDeformation();
 }
 
@@ -63,7 +63,7 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 	}
 
 	ConfigureTargetMeshCollisionAndPhysics(GetWorld() && GetWorld()->IsGameWorld() && bSimulatePhysics);
-	ConfigurePoseableMeshTransform(GetActorTransform());
+	ConfigurePoseableMeshTransform();
 
 	DeformationComponent->TargetMesh = TargetMesh;
 	DeformationComponent->PoseableMesh = PoseableMesh;
@@ -77,7 +77,7 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 	DeformationComponent->SetPoseableMesh(PoseableMesh);
 }
 
-void ADeformationVehiclePawn::ConfigureTargetMeshTransform(const FTransform& ActorTransform)
+void ADeformationVehiclePawn::ConfigureTargetMeshTransform()
 {
 	if (!TargetMesh)
 	{
@@ -86,7 +86,6 @@ void ADeformationVehiclePawn::ConfigureTargetMeshTransform(const FTransform& Act
 
 	TargetMesh->SetMobility(EComponentMobility::Movable);
 	TargetMesh->SetRelativeTransform(FTransform::Identity);
-	TargetMesh->SetWorldTransform(ActorTransform, false, nullptr, ETeleportType::TeleportPhysics);
 }
 
 void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics(bool bEnablePhysics)
@@ -117,7 +116,7 @@ void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics(bool bEnabl
 	}
 }
 
-void ADeformationVehiclePawn::ConfigurePoseableMeshTransform(const FTransform& ActorTransform)
+void ADeformationVehiclePawn::ConfigurePoseableMeshTransform()
 {
 	if (!PoseableMesh)
 	{
@@ -131,7 +130,6 @@ void ADeformationVehiclePawn::ConfigurePoseableMeshTransform(const FTransform& A
 		PoseableMesh->AttachToComponent(MeshAttachParent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 	}
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
-	PoseableMesh->SetWorldTransform(TargetMesh ? TargetMesh->GetComponentTransform() : ActorTransform, false, nullptr, ETeleportType::TeleportPhysics);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);
 }
