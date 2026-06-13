@@ -150,9 +150,12 @@ bool UDeformationComponent::RefreshDirectBoneTransforms()
 		PoseableMesh->CopyPoseFromSkeletalComponent(TargetMesh);
 	}
 
-	for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
+	if (!bMovePhysicsBodyWithDeformation)
 	{
-		ApplyDirectOffsetToPoseableBone(Pair.Key, Pair.Value.OffsetCS);
+		for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
+		{
+			ApplyDirectOffsetToPoseableBone(Pair.Key, Pair.Value.OffsetCS);
+		}
 	}
 
 	PoseableMesh->RefreshBoneTransforms();

@@ -40,7 +40,7 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 
 ## How deformation works
 
-`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, moves the matching PHAT body inward, and writes that offset to the same bone on `PoseableMesh` with `SetBoneLocationByName`.
+`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, and moves the matching PHAT body inward. `PoseableMesh` copies the resulting `TargetMesh` pose every tick, so visual bones follow the moved PHAT bodies instead of receiving a second independent offset.
 
 Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from relative velocity via `KinematicHitImpulseScale`. That lets collision events from kinematic bodies still move bones and create visible dents.
 
@@ -58,7 +58,7 @@ Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates 
 - `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.
 - `BoneSettings`: optional per-bone overrides.
 - `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
-- `MovePhysicsBodyWithDeformation`: teleports the impacted PHAT body by the accepted inward dent delta so collision bodies move with the visible dent.
+- `MovePhysicsBodyWithDeformation`: teleports the impacted PHAT body by the accepted inward dent delta. When enabled, the poseable mesh copies the target pose and does not apply the same offset a second time.
 - `ApplyPhysicsImpulse`: also pushes the impacted physics body inward when a valid deformation hit is accepted.
 - `RecoverySpeed`: keep `0` for permanent dents, or set above `0` for dents that return toward zero.
 
