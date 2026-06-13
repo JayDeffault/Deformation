@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0.0",
+	"FriendlyName": "Deformation",
+	"Description": "Runtime skeletal vehicle deformation helpers driven by collision impulses.",
+	"Category": "Vehicles",
+	"CreatedBy": "OpenAI",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "Deformation",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
