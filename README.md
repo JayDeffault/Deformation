@@ -15,7 +15,7 @@ Use `ADeformationVehiclePawn`.
 The pawn already contains and configures:
 
 - `PawnRoot` as the root scene component that owns the actor transform.
-- `TargetMesh` as the PHAT collision mesh using kinematic physics bodies by default.
+- `TargetMesh` as the PHAT collision mesh with `Simulate Physics` and gravity enabled by default.
 - `PoseableMesh` as a child visual copy whose bones are moved directly from C++.
 - `DeformationComponent` bound to both meshes with direct deformation enabled.
 
@@ -25,16 +25,16 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 
 `DeformationVehiclePawn` applies these defaults to `TargetMesh` in construction and at BeginPlay:
 
-- `TargetMesh` and `PoseableMesh` are attached to `PawnRoot` and keep relative transform identity, so both repeat `ADeformationVehiclePawn` transforms.
+- Before physics simulation starts, `TargetMesh` and `PoseableMesh` are attached under `PawnRoot` and keep relative transform identity. When full physics simulation is enabled, `TargetMesh` is driven by Chaos and `PoseableMesh` follows `TargetMesh`.
 - `CollisionProfileName = PhysicsActor`.
 - `CollisionEnabled = QueryAndPhysics`.
 - `Simulation Generates Hit Events` is enabled with `SetNotifyRigidBodyCollision(true)` and `SetAllBodiesNotifyRigidBodyCollision(true)`.
-- `UseKinematicPhysicsBodies` is enabled by default: PHAT bodies stay attached to bones, block collisions, and report hit bone names, while the pawn transform continues to drive the vehicle.
+- `Simulate Physics` and gravity are enabled by default, so the Skeletal Mesh should fall/react physically instead of hanging in the air.
 - When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
-- Full `Simulate Physics` is disabled by default. Enable it only if you want Chaos to simulate the whole skeletal mesh instead of kinematic PHAT bodies.
+- `UseKinematicPhysicsBodies` is available if you want PHAT bodies to stay attached to the pawn transform instead of full Chaos simulation.
 - All rigid bodies are woken at setup time.
 
-`PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy. Use PHAT/debug collision on `TargetMesh`; the plugin disables the TargetMesh main render pass instead of hiding the component, so physics/collision debug remains available while playing.
+`PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy. During full physics simulation it follows `TargetMesh`; use PHAT/debug collision on `TargetMesh`.
 
 If you need a custom collision channel, change `CollisionProfileName` on the pawn, but keep it blocking the objects that should dent the vehicle.
 
@@ -49,8 +49,9 @@ Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates 
 - `RootBone`: the root/chassis bone that must never receive deformation offsets or generated deformation impulses.
 - `CollisionProfileName`: collision profile applied to `TargetMesh`; default is `PhysicsActor`.
 - `ForceBlockingPhysicsCollision`: forces `TargetMesh` to `PhysicsBody` and blocks all channels for easier PHAT collision debugging.
-- `UseKinematicPhysicsBodies`: keeps PHAT bodies kinematic and attached to bones; this is the default deformation mode.
-- `SimulatePhysics`: enables full skeletal physics simulation only when `UseKinematicPhysicsBodies` is disabled.
+- `SimulatePhysics`: enables full skeletal physics simulation; enabled by default.
+- `EnableGravity`: enables gravity on `TargetMesh`; enabled by default.
+- `UseKinematicPhysicsBodies`: disables full simulation and keeps PHAT bodies attached to the pawn transform for kinematic collision tests.
 - `EstimateKinematicHitImpulse`: estimates dent strength from relative velocity when kinematic hits have zero impulse.
 - `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.
 - `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.

@@ -21,6 +21,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 	TargetMesh->SetRelativeTransform(FTransform::Identity);
 	TargetMesh->SetCollisionProfileName(CollisionProfileName);
 	TargetMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	TargetMesh->SetEnableGravity(bEnableGravity);
 	TargetMesh->SetNotifyRigidBodyCollision(true);
 	TargetMesh->SetGenerateOverlapEvents(false);
 
@@ -98,6 +99,7 @@ void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics()
 
 	TargetMesh->SetCollisionProfileName(CollisionProfileName);
 	TargetMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	TargetMesh->SetEnableGravity(bEnableGravity);
 	TargetMesh->SetNotifyRigidBodyCollision(true);
 	TargetMesh->SetAllBodiesNotifyRigidBodyCollision(true);
 	TargetMesh->SetGenerateOverlapEvents(false);
@@ -109,6 +111,7 @@ void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics()
 	}
 
 	const bool bEnableSimulation = bSimulatePhysics && !bUseKinematicPhysicsBodies;
+	TargetMesh->SetEnableGravity(bEnableGravity);
 	TargetMesh->SetSimulatePhysics(bEnableSimulation);
 	TargetMesh->SetAllBodiesSimulatePhysics(bEnableSimulation);
 
@@ -133,7 +136,13 @@ void ADeformationVehiclePawn::ConfigurePoseableMeshTransform()
 	}
 
 	PoseableMesh->SetMobility(EComponentMobility::Movable);
-	PoseableMesh->AttachToComponent(PawnRoot ? PawnRoot.Get() : RootComponent.Get(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+	USceneComponent* MeshAttachParent = (bSimulatePhysics && !bUseKinematicPhysicsBodies && TargetMesh)
+		? static_cast<USceneComponent*>(TargetMesh.Get())
+		: static_cast<USceneComponent*>(PawnRoot ? PawnRoot.Get() : RootComponent.Get());
+	if (MeshAttachParent)
+	{
+		PoseableMesh->AttachToComponent(MeshAttachParent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	}
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);

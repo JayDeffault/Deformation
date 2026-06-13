@@ -57,13 +57,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bForceBlockingPhysicsCollision = true;
 
-	/** Keep PHAT bodies kinematic by default: they collide and report hits, but the pawn transform drives the vehicle. */
+	/** Keep PHAT bodies kinematic: they collide and report hits, but the pawn transform drives the vehicle. Disabled by default so the mesh uses Simulate Physics. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
-	bool bUseKinematicPhysicsBodies = true;
+	bool bUseKinematicPhysicsBodies = false;
 
-	/** Enable full skeletal physics simulation instead of kinematic PHAT bodies. Leave false for vehicle dent deformation. */
+	/** Enable full skeletal physics simulation by default so the vehicle falls/reacts under physics. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
-	bool bSimulatePhysics = false;
+	bool bSimulatePhysics = true;
+
+	/** Enable gravity on TargetMesh when full skeletal physics simulation is active. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bEnableGravity = true;
 
 	/** Wake skeletal bodies after physics is configured so hit events and impulses start working immediately. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
