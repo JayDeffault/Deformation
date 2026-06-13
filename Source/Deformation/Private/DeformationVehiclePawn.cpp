@@ -46,6 +46,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 	DeformationComponent->bHideTargetMeshWhenUsingPoseable = true;
 	DeformationComponent->bOnlyConfiguredBones = false;
 	DeformationComponent->bApplyPhysicsImpulse = !bUseKinematicPhysicsBodies;
+	DeformationComponent->bForceInwardDeformation = bForceInwardDeformation;
 }
 
 void ADeformationVehiclePawn::OnConstruction(const FTransform& Transform)
@@ -87,6 +88,7 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 	DeformationComponent->bHideTargetMeshWhenUsingPoseable = true;
 	DeformationComponent->bOnlyConfiguredBones = false;
 	DeformationComponent->bApplyPhysicsImpulse = !bUseKinematicPhysicsBodies;
+	DeformationComponent->bForceInwardDeformation = bForceInwardDeformation;
 
 	DeformationComponent->BindToMesh(TargetMesh);
 	DeformationComponent->SetPoseableMesh(PoseableMesh);

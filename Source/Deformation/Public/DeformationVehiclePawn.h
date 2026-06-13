@@ -50,6 +50,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation")
 	FName RootBone = NAME_None;
 
+	/** If true, deformation directions are forced toward the mesh center instead of using raw opposite hit normals. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
+	bool bForceInwardDeformation = false;
+
 	/** Collision profile applied to TargetMesh so Physics Asset bodies are visible/usable for blocking hits. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	FName CollisionProfileName = TEXT("PhysicsActor");

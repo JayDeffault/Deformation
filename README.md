@@ -54,6 +54,7 @@ If a kinematic deformation body is parented under a simulated body (for example 
 ## Important settings
 
 - `RootBone`: the root/chassis bone that must never receive deformation offsets or generated deformation impulses.
+- `ForceInwardDeformation`: exposed on `ADeformationVehiclePawn` and forwarded to `UDeformationComponent`; enable it in the pawn Details panel when dents must always be pushed toward the mesh center.
 - `CollisionProfileName`: collision profile applied to `TargetMesh`; default is `PhysicsActor`.
 - `ForceBlockingPhysicsCollision`: forces `TargetMesh` to `PhysicsBody` and blocks all channels for easier PHAT collision debugging.
 - `SimulatePhysics`: enables skeletal physics on `TargetMesh`; enabled by default.
