@@ -59,7 +59,7 @@ Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates 
 - `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.
 - `BoneSettings`: optional per-bone overrides.
 - `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
-- `MovePhysicsBodyWithDeformation`: teleports the impacted PHAT body by the accepted inward dent delta and sets the kinematic target for kinematic bodies. The poseable mesh also receives the stored offset directly, so the visual dent remains visible even when Chaos does not expose a kinematic body move as a skeletal pose change.
+- `MovePhysicsBodyWithDeformation`: teleports the impacted PHAT body by the accepted inward dent delta while keeping that body kinematic. The poseable mesh also receives the stored offset directly, so the visual dent remains visible even when Chaos does not expose a kinematic body move as a skeletal pose change.
 - `ApplyPhysicsImpulse`: also pushes the impacted physics body inward when a valid deformation hit is accepted.
 - `RecoverySpeed`: keep `0` for permanent dents, or set above `0` for dents that return toward zero.
 

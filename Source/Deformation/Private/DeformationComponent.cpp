@@ -449,7 +449,6 @@ void UDeformationComponent::MovePhysicsBodyByOffset(FName BoneName, const FVecto
 	FTransform BodyTransform = BodyInstance->GetUnrealWorldTransform();
 	BodyTransform.AddToTranslation(OffsetWS);
 	BodyInstance->SetInstanceSimulatePhysics(false);
-	BodyInstance->SetKinematicTarget(BodyTransform);
 	BodyInstance->SetBodyTransform(BodyTransform, ETeleportType::TeleportPhysics);
 	TargetMesh->WakeRigidBody(BoneName);
 }
