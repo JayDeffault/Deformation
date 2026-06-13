@@ -33,6 +33,14 @@ struct DEFORMATION_API FDeformationBoneSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation", meta = (ClampMin = "0.0"))
 	float MaxOffset = 18.0f;
 
+	/** Use DeformationDirectionCS instead of deriving the dent direction from the hit normal. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
+	bool bUseCustomDeformationDirection = false;
+
+	/** One-way component-space dent direction. Offsets only accumulate in this direction and never push back. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction", meta = (EditCondition = "bUseCustomDeformationDirection"))
+	FVector DeformationDirectionCS = FVector::ForwardVector;
+
 	/** Multiplier applied to generated physics impulse. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation", meta = (ClampMin = "0.0"))
 	float PhysicsImpulseScale = 1.0f;

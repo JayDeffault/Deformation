@@ -124,6 +124,7 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);
+	PoseableMesh->SetCastShadow(true);
 	PoseableMesh->SetVisibility(true, true);
 	PoseableMesh->SetHiddenInGame(false, true);
 	PoseableMesh->CopyPoseFromSkeletalComponent(TargetMesh);
@@ -133,6 +134,7 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 		TargetMesh->SetVisibility(true, false);
 		TargetMesh->SetHiddenInGame(false, false);
 		TargetMesh->SetRenderInMainPass(false);
+		TargetMesh->SetCastShadow(false);
 	}
 
 	return RefreshDirectBoneTransforms();
@@ -262,13 +264,45 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 		return false;
 	}
 
-	const FVector DeformationDirectionWS = ResolveInwardDeformationDirection(HitLocationWS, SafeNormalWS);
-	const FVector DeformationDirectionCS = TargetMesh->GetComponentTransform().InverseTransformVectorNoScale(DeformationDirectionWS).GetSafeNormal();
+	const FVector HitDerivedDirectionWS = ResolveInwardDeformationDirection(HitLocationWS, SafeNormalWS);
+	const FVector HitDerivedDirectionCS = TargetMesh->GetComponentTransform().InverseTransformVectorNoScale(HitDerivedDirectionWS).GetSafeNormal();
+	if (HitDerivedDirectionCS.IsNearlyZero())
+	{
+		return false;
+	}
 
 	FDeformationBoneState& State = FindOrAddState(BoneName);
+	FVector DeformationDirectionCS = Settings->bUseCustomDeformationDirection
+		? Settings->DeformationDirectionCS.GetSafeNormal()
+		: HitDerivedDirectionCS;
+	if (DeformationDirectionCS.IsNearlyZero())
+	{
+		return false;
+	}
+
+	float DirectionScale = 1.0f;
+	if (Settings->bUseCustomDeformationDirection)
+	{
+		DirectionScale = FVector::DotProduct(HitDerivedDirectionCS, DeformationDirectionCS);
+		if (DirectionScale <= KINDA_SMALL_NUMBER)
+		{
+			return false;
+		}
+	}
+	else if (!State.OffsetCS.IsNearlyZero())
+	{
+		DeformationDirectionCS = State.OffsetCS.GetSafeNormal();
+		DirectionScale = FVector::DotProduct(HitDerivedDirectionCS, DeformationDirectionCS);
+		if (DirectionScale <= KINDA_SMALL_NUMBER)
+		{
+			return false;
+		}
+	}
+
 	const FVector PreviousOffsetCS = State.OffsetCS;
-	State.OffsetCS += DeformationDirectionCS * OffsetAmount;
-	State.OffsetCS = State.OffsetCS.GetClampedToMaxSize(Settings->MaxOffset);
+	const float PreviousDepth = FMath::Max(0.0f, FVector::DotProduct(State.OffsetCS, DeformationDirectionCS));
+	const float NewDepth = FMath::Min(PreviousDepth + OffsetAmount * DirectionScale, Settings->MaxOffset);
+	State.OffsetCS = DeformationDirectionCS * NewDepth;
 	const FVector AppliedDeltaCS = State.OffsetCS - PreviousOffsetCS;
 	const FVector AppliedDeltaWS = TargetMesh->GetComponentTransform().TransformVectorNoScale(AppliedDeltaCS);
 	State.LastImpulse = NormalImpulse;
@@ -281,6 +315,7 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 
 	if (bApplyPhysicsImpulse)
 	{
+		const FVector DeformationDirectionWS = TargetMesh->GetComponentTransform().TransformVectorNoScale(DeformationDirectionCS).GetSafeNormal();
 		TargetMesh->WakeRigidBody(BoneName);
 		TargetMesh->AddImpulse(DeformationDirectionWS * NormalImpulse * Settings->PhysicsImpulseScale, BoneName, bVelocityChange);
 	}

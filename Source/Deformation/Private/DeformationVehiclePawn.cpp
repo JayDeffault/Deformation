@@ -35,6 +35,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);
+	PoseableMesh->SetCastShadow(true);
 
 	DeformationComponent = CreateDefaultSubobject<UDeformationComponent>(TEXT("DeformationComponent"));
 	DeformationComponent->TargetMesh = TargetMesh;
@@ -166,6 +167,7 @@ void ADeformationVehiclePawn::ConfigurePoseableMeshTransform()
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);
+	PoseableMesh->SetCastShadow(true);
 }
 
 void ADeformationVehiclePawn::AlignKinematicBodiesToCurrentBones()

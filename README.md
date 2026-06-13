@@ -17,7 +17,7 @@ The pawn already contains and configures:
 - `TargetMesh` as the root component that owns the actor transform and skeletal physics.
 - `PawnRoot` as a helper scene component for Blueprint organization.
 - `TargetMesh` as the PHAT collision mesh: `RootBone` is simulated, while bodies below it are kinematic by default.
-- `PoseableMesh` as a child visual copy whose bones are moved directly from C++.
+- `PoseableMesh` as a child visual copy whose bones are moved directly from C++ and casts the visible shadow.
 - `DeformationComponent` bound to both meshes with direct deformation enabled.
 
 By default you do not need Control Rig, an Animation Blueprint, or per-bone setup. Every hit bone can deform except the configured `RootBone`.
@@ -35,7 +35,7 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 - When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
 - All rigid bodies are woken at setup time.
 
-`PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy and is attached to `TargetMesh`, so it inherits the same root physics transform; use PHAT/debug collision on `TargetMesh`.
+`PoseableMesh` has collision disabled on purpose. It is only the visible deformed copy and is attached to `TargetMesh`, so it inherits the same root physics transform; use PHAT/debug collision on `TargetMesh`. When the target render mesh is hidden, its shadow casting is disabled and the poseable visual mesh casts the shadow instead, avoiding duplicate or undeformed shadows.
 
 If you need a custom collision channel, change `CollisionProfileName` on the pawn, but keep it blocking the objects that should dent the vehicle.
 
@@ -44,6 +44,8 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 `UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, and moves the matching PHAT body inward. `PoseableMesh` copies the resulting `TargetMesh` pose every tick, so visual bones follow the moved PHAT bodies instead of receiving a second independent offset.
 
 Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from relative velocity via `KinematicHitImpulseScale`. That lets collision events from kinematic bodies still move bones and create visible dents. If Chaos reports the simulated `RootBone` for a hit while the actual dent bodies are kinematic, the component falls back to the closest non-root PHAT body to the hit point, so the chassis stays protected but doors/panels can still deform.
+
+Each bone deforms one-way only. Once a bone has an offset, later hits must point in the same component-space deformation direction to add more depth; opposite hits are ignored, so a dent cannot be pushed back out. For per-bone control, enable `bUseCustomDeformationDirection` in a `BoneSettings` entry and set `DeformationDirectionCS` to the exact component-space direction that bone is allowed to move.
 
 ## Important settings
 
@@ -58,6 +60,7 @@ Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates 
 - `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.
 - `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.
 - `BoneSettings`: optional per-bone overrides.
+- `bUseCustomDeformationDirection` / `DeformationDirectionCS`: optional per-bone one-way component-space dent direction.
 - `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
 - `MovePhysicsBodyWithDeformation`: teleports the impacted PHAT body by the accepted inward dent delta while keeping that body kinematic. The poseable mesh also receives the stored offset directly, so the visual dent remains visible even when Chaos does not expose a kinematic body move as a skeletal pose change.
 - `ApplyPhysicsImpulse`: also pushes the impacted physics body inward when a valid deformation hit is accepted.
