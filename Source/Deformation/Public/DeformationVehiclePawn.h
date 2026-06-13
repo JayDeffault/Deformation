@@ -26,6 +26,7 @@ class DEFORMATION_API ADeformationVehiclePawn : public APawn
 public:
 	ADeformationVehiclePawn();
 
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 
@@ -81,5 +82,10 @@ private:
 	void ConfigureTargetMeshTransform();
 	void ConfigureTargetMeshCollisionAndPhysics();
 	void ConfigurePoseableMeshTransform();
+	void AlignKinematicBodiesToCurrentBones();
 	FName GetEffectiveSimulationRootBone() const;
+
+	/** Initial PHAT body transforms relative to the simulated RootBone body. Used to keep kinematic bodies attached. */
+	UPROPERTY(Transient)
+	TMap<FName, FTransform> InitialBodyTransformsRelativeToRoot;
 };
