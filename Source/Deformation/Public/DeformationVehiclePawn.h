@@ -15,8 +15,8 @@ class USkeletalMeshComponent;
  * Ready-to-use pawn for skeletal vehicle deformation.
  *
  * Put your Skeletal Mesh asset on TargetMesh, set RootBone, and the pawn wires the collision mesh, visible poseable
- * mesh, and deformation component together automatically. TargetMesh and PoseableMesh are children of PawnRoot so they
- * inherit the ADeformationVehiclePawn transform.
+ * mesh, and deformation component together automatically. TargetMesh is the root component so skeletal physics starts
+ * at the ADeformationVehiclePawn transform instead of being simulated as a detached child component.
  */
 UCLASS(Blueprintable, BlueprintType, ClassGroup = (Deformation))
 class DEFORMATION_API ADeformationVehiclePawn : public APawn
@@ -26,11 +26,10 @@ class DEFORMATION_API ADeformationVehiclePawn : public APawn
 public:
 	ADeformationVehiclePawn();
 
-	virtual void Tick(float DeltaSeconds) override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 
-	/** Root scene component. Move/rotate/scale the pawn; TargetMesh and PoseableMesh follow this transform. */
+	/** Helper scene component kept for Blueprint organization. TargetMesh is the actual root for stable skeletal physics. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Deformation")
 	TObjectPtr<USceneComponent> PawnRoot;
 
@@ -84,8 +83,4 @@ private:
 	void ConfigurePoseableMeshTransform();
 	void AlignKinematicBodiesToCurrentBones();
 	FName GetEffectiveSimulationRootBone() const;
-
-	/** Initial PHAT body transforms relative to the simulated RootBone body. Used to keep kinematic bodies attached. */
-	UPROPERTY(Transient)
-	TMap<FName, FTransform> InitialBodyTransformsRelativeToRoot;
 };
