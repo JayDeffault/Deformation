@@ -50,13 +50,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation")
 	FName RootBone = NAME_None;
 
-	/** If true, deformation directions are forced toward the mesh center instead of using raw opposite hit normals. */
+	/** If true, deformation directions are forced toward the mesh center instead of stretching outward. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
-	bool bForceInwardDeformation = false;
+	bool bForceInwardDeformation = true;
 
 	/** If true, each accepted hit adds dent depth up to MaxOffset and opposite hits cannot push it back out. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
-	bool bAccumulateHitsToMaxOffset = false;
+	bool bAccumulateHitsToMaxOffset = true;
 
 	/** Collision profile applied to TargetMesh so Physics Asset bodies are visible/usable for blocking hits. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")

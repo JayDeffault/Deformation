@@ -131,8 +131,8 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 
 	if (bHideTargetMeshWhenUsingPoseable)
 	{
-		TargetMesh->SetVisibility(false, false);
-		TargetMesh->SetHiddenInGame(true, false);
+		TargetMesh->SetVisibility(true, false);
+		TargetMesh->SetHiddenInGame(false, false);
 		TargetMesh->SetRenderInMainPass(false);
 		TargetMesh->SetCastShadow(false);
 		PoseableMesh->SetVisibility(true, true);
@@ -350,7 +350,9 @@ void UDeformationComponent::HandleMeshHit(UPrimitiveComponent* HitComponent, AAc
 	{
 		const FVector HitVelocity = HitComponent ? HitComponent->GetComponentVelocity() : FVector::ZeroVector;
 		const FVector OtherVelocity = OtherComp ? OtherComp->GetComponentVelocity() : FVector::ZeroVector;
-		ImpactImpulse = (OtherVelocity - HitVelocity).Size() * KinematicHitImpulseScale;
+		const FVector RelativeVelocity = OtherVelocity - HitVelocity;
+		const float NormalSpeed = FMath::Abs(FVector::DotProduct(RelativeVelocity, Hit.ImpactNormal.GetSafeNormal()));
+		ImpactImpulse = NormalSpeed * KinematicHitImpulseScale;
 	}
 
 	ApplyDeformationImpulse(BoneName, Hit.ImpactPoint, Hit.ImpactNormal, ImpactImpulse);

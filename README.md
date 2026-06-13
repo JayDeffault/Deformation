@@ -35,7 +35,7 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 - When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
 - All rigid bodies are woken at setup time.
 
-`PoseableMesh` has collision disabled on purpose. It is the only visible deformed copy and is attached to `TargetMesh`, so it inherits the same root physics transform; use PHAT/debug collision on `TargetMesh`. When the target render mesh is hidden, only its own visibility, main-pass rendering, and shadow casting are disabled so the hidden physics mesh does not draw a second set of polygons while the child `PoseableMesh` remains visible.
+`PoseableMesh` has collision disabled on purpose. It is the only visible deformed copy and is attached to `TargetMesh`, so it inherits the same root physics transform; use PHAT/debug collision on `TargetMesh`. When the target render mesh is hidden, it stays visible to debug collision tools but is removed from the main render pass and shadow rendering, so the hidden physics mesh does not draw a second set of visible polygons while the child `PoseableMesh` remains visible.
 
 If you need a custom collision channel, change `CollisionProfileName` on the pawn, but keep it blocking the objects that should dent the vehicle.
 
@@ -43,9 +43,9 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 
 `UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, and moves the matching PHAT body inward. `PoseableMesh` copies the resulting `TargetMesh` pose every tick and then applies current PHAT body transforms, so simulated doors/hinges are visible even when the hidden physics mesh is not rendered.
 
-Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from relative velocity via `KinematicHitImpulseScale`. That lets collision events from kinematic bodies still move bones and create visible dents. If Chaos reports the simulated `RootBone` for a hit while the actual dent bodies are kinematic, the component falls back to the closest non-root PHAT body to the hit point, so the chassis stays protected but doors/panels can still deform.
+Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from velocity along the hit normal via `KinematicHitImpulseScale`; tangential rubbing/sliding is ignored. That lets collision events from kinematic bodies still move bones and create visible dents. If Chaos reports the simulated `RootBone` for a hit while the actual dent bodies are kinematic, the component falls back to the closest non-root PHAT body to the hit point, so the chassis stays protected but doors/panels can still deform.
 
-By default, bones can deform in any direction again and the accumulated offset is clamped only by `MaxOffset`. If you need one-way dents for a specific bone, enable `bLockDeformationDirection`; for an exact per-bone direction, also enable `bUseCustomDeformationDirection` and set `DeformationDirectionCS`.
+By default, accepted hits accumulate inward dent depth up to `MaxOffset` and opposite hits cannot push the dent back out. Disable `AccumulateHitsToMaxOffset` only if you want free multidirectional offset blending.
 
 Every resolved hit bone can deform by default again, including simulated bodies, matching the original simple dent behavior. If you need to protect simulated constraint bodies such as doors/hood/trunk hinges, enable `DeformOnlyKinematicBodies` and use separate kinematic deformation bodies on those parts.
 
@@ -54,20 +54,20 @@ If a kinematic deformation body is parented under a simulated body (for example 
 ## Important settings
 
 - `RootBone`: the root/chassis bone that must never receive deformation offsets or generated deformation impulses.
-- `ForceInwardDeformation`: exposed on `ADeformationVehiclePawn` and forwarded to `UDeformationComponent`; enable it in the pawn Details panel when dents must always be pushed toward the mesh center.
+- `ForceInwardDeformation`: exposed on `ADeformationVehiclePawn` and forwarded to `UDeformationComponent`; it is enabled by default and can be disabled in the pawn Details panel if you need raw hit-normal deformation.
 - `CollisionProfileName`: collision profile applied to `TargetMesh`; default is `PhysicsActor`.
 - `ForceBlockingPhysicsCollision`: forces `TargetMesh` to `PhysicsBody` and blocks all channels for easier PHAT collision debugging.
 - `SimulatePhysics`: enables skeletal physics on `TargetMesh`; enabled by default.
 - `EnableGravity`: enables gravity on `TargetMesh`; enabled by default.
 - `UseKinematicPhysicsBodies`: respects PHAT simulation settings; simulated bodies remain simulated for constraints, while kinematic bodies are used as deformation helpers. Non-simulated non-root PHAT bodies are aligned back to their bone transforms during setup.
 - `EstimateKinematicHitImpulse`: estimates dent strength from relative velocity when kinematic hits have zero impulse.
-- `ForceInwardDeformation`: optional inward-only mode; disabled by default so deformation uses the raw hit normal and can accumulate from every direction.
-- `AccumulateHitsToMaxOffset`: optional one-way accumulation mode exposed on the pawn; each accepted hit adds dent depth until `MaxOffset`, and opposite hits cannot push the dent back out.
+- `ForceInwardDeformation`: enabled by default so accepted dents are flipped toward the mesh center instead of stretching outward.
+- `AccumulateHitsToMaxOffset`: enabled by default; each accepted hit adds dent depth until `MaxOffset`, and opposite hits cannot push the dent back out.
 - `OnlyConfiguredBones`: disabled by default, so bones deform automatically without filling a list. Enable it only if you want deformation limited to `BoneSettings`.
 - `DefaultBoneSettings`: impulse thresholds and max dent offset used for automatically deforming bones.
 - `BoneSettings`: optional per-bone overrides.
-- `bLockDeformationDirection`: optional per-bone one-way mode; disabled by default so deformation can accumulate in all directions.
-- `bAccumulateHitsToMaxOffset`: global one-way accumulation mode; useful when every hit should deepen the dent up to the configured maximum.
+- `bLockDeformationDirection`: optional per-bone one-way mode.
+- `bAccumulateHitsToMaxOffset`: global one-way accumulation mode; enabled by default to deepen dents up to the configured maximum without allowing push-back.
 - `bUseCustomDeformationDirection` / `DeformationDirectionCS`: optional per-bone component-space dent direction when directional locking is needed.
 - `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
 - `MovePhysicsBodyWithDeformation`: teleports the impacted PHAT body by the accepted inward dent delta while keeping that body kinematic. The poseable mesh also receives the stored offset directly, so the visual dent remains visible even when Chaos does not expose a kinematic body move as a skeletal pose change.

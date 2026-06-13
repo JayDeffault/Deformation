@@ -145,13 +145,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics", meta = (ClampMin = "0.0"))
 	float KinematicHitImpulseScale = 250.0f;
 
-	/** If true, hit normals are flipped toward mesh center; disabled by default to allow deformation from every direction. */
+	/** If true, hit normals are flipped toward mesh center so dents go inward instead of stretching outward. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
-	bool bForceInwardDeformation = false;
+	bool bForceInwardDeformation = true;
 
 	/** If true, repeated hits add depth up to MaxOffset and opposite hits cannot push the dent back out. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
-	bool bAccumulateHitsToMaxOffset = false;
+	bool bAccumulateHitsToMaxOffset = true;
 
 	/** Optional automatic interpolation back to zero; 0 keeps dents permanently until ResetDeformation is called. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation", meta = (ClampMin = "0.0"))
