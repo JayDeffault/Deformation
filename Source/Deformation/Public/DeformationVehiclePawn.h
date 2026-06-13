@@ -81,4 +81,5 @@ private:
 	void ConfigureTargetMeshTransform();
 	void ConfigureTargetMeshCollisionAndPhysics();
 	void ConfigurePoseableMeshTransform();
+	FName GetEffectiveSimulationRootBone() const;
 };
