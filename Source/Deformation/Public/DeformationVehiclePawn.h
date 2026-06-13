@@ -84,4 +84,8 @@ private:
 	void ConfigurePoseableMeshTransform();
 	void AlignKinematicBodiesToCurrentBones();
 	FName GetEffectiveSimulationRootBone() const;
+	FName FindNearestSimulatedParentBone(FName BoneName) const;
+
+	UPROPERTY(Transient)
+	TMap<FName, FTransform> InitialKinematicBodyRelativeToSimulatedParent;
 };

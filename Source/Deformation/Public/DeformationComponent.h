@@ -205,6 +205,7 @@ private:
 	bool CanDeformPhysicsBody(FName BoneName) const;
 	FDeformationBoneState& FindOrAddState(FName BoneName);
 	FVector ResolveInwardDeformationDirection(const FVector& HitLocationWS, const FVector& HitNormalWS) const;
+	void ApplyPhysicsBodyTransformsToPoseable() const;
 	void ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const;
 	void MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS) const;
 	void RemoveRootBoneState();

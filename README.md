@@ -41,13 +41,15 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 
 ## How deformation works
 
-`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, and moves the matching PHAT body inward. `PoseableMesh` copies the resulting `TargetMesh` pose every tick, so visual bones follow the moved PHAT bodies instead of receiving a second independent offset.
+`UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, and moves the matching PHAT body inward. `PoseableMesh` copies the resulting `TargetMesh` pose every tick and then applies current PHAT body transforms, so simulated doors/hinges are visible even when the hidden physics mesh is not rendered.
 
 Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from relative velocity via `KinematicHitImpulseScale`. That lets collision events from kinematic bodies still move bones and create visible dents. If Chaos reports the simulated `RootBone` for a hit while the actual dent bodies are kinematic, the component falls back to the closest non-root PHAT body to the hit point, so the chassis stays protected but doors/panels can still deform.
 
 By default, bones can deform in any direction again and the accumulated offset is clamped only by `MaxOffset`. If you need one-way dents for a specific bone, enable `bLockDeformationDirection`; for an exact per-bone direction, also enable `bUseCustomDeformationDirection` and set `DeformationDirectionCS`.
 
 Only kinematic PHAT bodies deform by default. Simulated bodies are left alone so constraints such as doors/hood/trunk hinges can move freely; put separate kinematic deformation bodies on those parts if you want local dents on a simulated door.
+
+If a kinematic deformation body is parented under a simulated body (for example a dent helper under a simulated door), the pawn keeps that kinematic body attached to the nearest simulated parent body each tick before applying the stored dent offset. This lets the door open while its kinematic deformation bodies follow it.
 
 ## Important settings
 

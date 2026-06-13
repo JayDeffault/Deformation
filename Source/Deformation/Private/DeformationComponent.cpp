@@ -152,6 +152,7 @@ bool UDeformationComponent::RefreshDirectBoneTransforms()
 	if (TargetMesh && bCopyTargetPoseBeforeApplyingDirectOffsets)
 	{
 		PoseableMesh->CopyPoseFromSkeletalComponent(TargetMesh);
+		ApplyPhysicsBodyTransformsToPoseable();
 	}
 
 	for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
@@ -478,6 +479,38 @@ FVector UDeformationComponent::ResolveInwardDeformationDirection(const FVector& 
 	}
 
 	return CandidateDirectionWS;
+}
+
+void UDeformationComponent::ApplyPhysicsBodyTransformsToPoseable() const
+{
+	if (!TargetMesh || !PoseableMesh)
+	{
+		return;
+	}
+
+	UPhysicsAsset* PhysicsAsset = TargetMesh->GetPhysicsAsset();
+	if (!PhysicsAsset)
+	{
+		return;
+	}
+
+	const FTransform PoseableWorldTransform = PoseableMesh->GetComponentTransform();
+	for (USkeletalBodySetup* BodySetup : PhysicsAsset->SkeletalBodySetups)
+	{
+		if (!BodySetup || BodySetup->BoneName.IsNone() || IsRootBone(BodySetup->BoneName))
+		{
+			continue;
+		}
+
+		FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BodySetup->BoneName);
+		if (!BodyInstance)
+		{
+			continue;
+		}
+
+		const FTransform BodyTransformCS = BodyInstance->GetUnrealWorldTransform().GetRelativeTransform(PoseableWorldTransform);
+		PoseableMesh->SetBoneTransformByName(BodySetup->BoneName, BodyTransformCS, EBoneSpaces::ComponentSpace);
+	}
 }
 
 void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const

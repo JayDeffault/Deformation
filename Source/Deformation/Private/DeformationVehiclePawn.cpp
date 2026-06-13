@@ -51,18 +51,21 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 void ADeformationVehiclePawn::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
+	InitialKinematicBodyRelativeToSimulatedParent.Reset();
 	ConfigureDeformation();
 }
 
 void ADeformationVehiclePawn::BeginPlay()
 {
 	Super::BeginPlay();
+	InitialKinematicBodyRelativeToSimulatedParent.Reset();
 	ConfigureDeformation();
 }
 
 void ADeformationVehiclePawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	AlignKinematicBodiesToCurrentBones();
 }
 
 void ADeformationVehiclePawn::ConfigureDeformation()
@@ -200,6 +203,21 @@ void ADeformationVehiclePawn::AlignKinematicBodiesToCurrentBones()
 		}
 
 		FTransform DesiredBodyTransform = TargetMesh->GetBoneTransform(BoneIndex);
+		const FName SimulatedParentBone = FindNearestSimulatedParentBone(BodySetup->BoneName);
+		FBodyInstance* SimulatedParentBody = SimulatedParentBone.IsNone() ? nullptr : TargetMesh->GetBodyInstance(SimulatedParentBone);
+		if (SimulatedParentBody && SimulatedParentBody->IsInstanceSimulatingPhysics())
+		{
+			FTransform* RelativeTransform = InitialKinematicBodyRelativeToSimulatedParent.Find(BodySetup->BoneName);
+			if (!RelativeTransform)
+			{
+				RelativeTransform = &InitialKinematicBodyRelativeToSimulatedParent.Add(
+					BodySetup->BoneName,
+					DesiredBodyTransform.GetRelativeTransform(SimulatedParentBody->GetUnrealWorldTransform()));
+			}
+
+			DesiredBodyTransform = (*RelativeTransform) * SimulatedParentBody->GetUnrealWorldTransform();
+		}
+
 		if (DeformationComponent)
 		{
 			const FVector DeformationOffsetWS = TargetMesh->GetComponentTransform().TransformVectorNoScale(
@@ -222,6 +240,28 @@ FName ADeformationVehiclePawn::GetEffectiveSimulationRootBone() const
 	if (TargetMesh && TargetMesh->GetNumBones() > 0)
 	{
 		return TargetMesh->GetBoneName(0);
+	}
+
+	return NAME_None;
+}
+
+FName ADeformationVehiclePawn::FindNearestSimulatedParentBone(FName BoneName) const
+{
+	if (!TargetMesh || BoneName.IsNone())
+	{
+		return NAME_None;
+	}
+
+	FName ParentBoneName = TargetMesh->GetParentBone(BoneName);
+	while (!ParentBoneName.IsNone())
+	{
+		FBodyInstance* ParentBody = TargetMesh->GetBodyInstance(ParentBoneName);
+		if (ParentBody && ParentBody->IsInstanceSimulatingPhysics())
+		{
+			return ParentBoneName;
+		}
+
+		ParentBoneName = TargetMesh->GetParentBone(ParentBoneName);
 	}
 
 	return NAME_None;
