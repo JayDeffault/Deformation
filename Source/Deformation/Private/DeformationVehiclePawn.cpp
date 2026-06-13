@@ -63,7 +63,6 @@ void ADeformationVehiclePawn::BeginPlay()
 void ADeformationVehiclePawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	SyncActorTransformToSimulatedRoot();
 }
 
 void ADeformationVehiclePawn::ConfigureDeformation()
@@ -130,27 +129,7 @@ void ADeformationVehiclePawn::ConfigureTargetMeshCollisionAndPhysics()
 
 	if (bSimulatePhysics && bUseKinematicPhysicsBodies)
 	{
-		const FName SimulationRootBone = GetEffectiveSimulationRootBone();
 		TargetMesh->SetSimulatePhysics(true);
-
-		// Start from a fully kinematic skeletal asset, then enable simulation only on RootBone and PHAT bodies that are
-		// explicitly marked Simulated. This keeps door constraints free while deformation helper bodies stay kinematic.
-		TargetMesh->SetAllBodiesSimulatePhysics(false);
-		if (UPhysicsAsset* PhysicsAsset = TargetMesh->GetPhysicsAsset())
-		{
-			for (USkeletalBodySetup* BodySetup : PhysicsAsset->SkeletalBodySetups)
-			{
-				if (!BodySetup || BodySetup->BoneName.IsNone())
-				{
-					continue;
-				}
-
-				if (FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BodySetup->BoneName))
-				{
-					BodyInstance->SetInstanceSimulatePhysics(ShouldBodySimulate(BodySetup, SimulationRootBone));
-				}
-			}
-		}
 	}
 	else
 	{
@@ -246,37 +225,4 @@ FName ADeformationVehiclePawn::GetEffectiveSimulationRootBone() const
 	}
 
 	return NAME_None;
-}
-
-bool ADeformationVehiclePawn::ShouldBodySimulate(const USkeletalBodySetup* BodySetup, FName SimulationRootBone) const
-{
-	if (!BodySetup || BodySetup->BoneName.IsNone())
-	{
-		return false;
-	}
-
-	if (BodySetup->BoneName == SimulationRootBone)
-	{
-		return true;
-	}
-
-	return BodySetup->PhysicsType == PhysType_Simulated;
-}
-
-void ADeformationVehiclePawn::SyncActorTransformToSimulatedRoot()
-{
-	if (!bSyncActorTransformToSimulatedRoot || !TargetMesh || !bSimulatePhysics)
-	{
-		return;
-	}
-
-	const FName SimulationRootBone = GetEffectiveSimulationRootBone();
-	FBodyInstance* RootBodyInstance = SimulationRootBone.IsNone() ? nullptr : TargetMesh->GetBodyInstance(SimulationRootBone);
-	if (!RootBodyInstance || !RootBodyInstance->IsInstanceSimulatingPhysics())
-	{
-		return;
-	}
-
-	const FTransform RootBodyTransform = RootBodyInstance->GetUnrealWorldTransform();
-	SetActorLocationAndRotation(RootBodyTransform.GetLocation(), RootBodyTransform.GetRotation(), false, nullptr, ETeleportType::TeleportPhysics);
 }

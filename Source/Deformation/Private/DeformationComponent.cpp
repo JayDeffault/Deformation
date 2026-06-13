@@ -285,29 +285,37 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 		return false;
 	}
 
-	float DirectionScale = 1.0f;
-	if (Settings->bUseCustomDeformationDirection)
-	{
-		DirectionScale = FVector::DotProduct(HitDerivedDirectionCS, DeformationDirectionCS);
-		if (DirectionScale <= KINDA_SMALL_NUMBER)
-		{
-			return false;
-		}
-	}
-	else if (!State.OffsetCS.IsNearlyZero())
-	{
-		DeformationDirectionCS = State.OffsetCS.GetSafeNormal();
-		DirectionScale = FVector::DotProduct(HitDerivedDirectionCS, DeformationDirectionCS);
-		if (DirectionScale <= KINDA_SMALL_NUMBER)
-		{
-			return false;
-		}
-	}
-
 	const FVector PreviousOffsetCS = State.OffsetCS;
-	const float PreviousDepth = FMath::Max(0.0f, FVector::DotProduct(State.OffsetCS, DeformationDirectionCS));
-	const float NewDepth = FMath::Min(PreviousDepth + OffsetAmount * DirectionScale, Settings->MaxOffset);
-	State.OffsetCS = DeformationDirectionCS * NewDepth;
+	float DirectionScale = 1.0f;
+	if (Settings->bUseCustomDeformationDirection || Settings->bLockDeformationDirection)
+	{
+		if (Settings->bUseCustomDeformationDirection)
+		{
+			DirectionScale = FVector::DotProduct(HitDerivedDirectionCS, DeformationDirectionCS);
+			if (DirectionScale <= KINDA_SMALL_NUMBER)
+			{
+				return false;
+			}
+		}
+		else if (!State.OffsetCS.IsNearlyZero())
+		{
+			DeformationDirectionCS = State.OffsetCS.GetSafeNormal();
+			DirectionScale = FVector::DotProduct(HitDerivedDirectionCS, DeformationDirectionCS);
+			if (DirectionScale <= KINDA_SMALL_NUMBER)
+			{
+				return false;
+			}
+		}
+
+		const float PreviousDepth = FMath::Max(0.0f, FVector::DotProduct(State.OffsetCS, DeformationDirectionCS));
+		const float NewDepth = FMath::Min(PreviousDepth + OffsetAmount * DirectionScale, Settings->MaxOffset);
+		State.OffsetCS = DeformationDirectionCS * NewDepth;
+	}
+	else
+	{
+		State.OffsetCS += DeformationDirectionCS * OffsetAmount;
+		State.OffsetCS = State.OffsetCS.GetClampedToMaxSize(Settings->MaxOffset);
+	}
 	const FVector AppliedDeltaCS = State.OffsetCS - PreviousOffsetCS;
 	const FVector AppliedDeltaWS = TargetMesh->GetComponentTransform().TransformVectorNoScale(AppliedDeltaCS);
 	State.LastImpulse = NormalImpulse;

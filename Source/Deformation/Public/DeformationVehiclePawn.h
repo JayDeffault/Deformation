@@ -74,10 +74,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bWakeRigidBodies = true;
 
-	/** Keep the actor/Blueprint transform synchronized to the simulated RootBone body after physics settles. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
-	bool bSyncActorTransformToSimulatedRoot = true;
-
 	/** Push current pawn defaults into meshes and DeformationComponent. */
 	UFUNCTION(BlueprintCallable, Category = "Deformation")
 	void ConfigureDeformation();
@@ -88,6 +84,4 @@ private:
 	void ConfigurePoseableMeshTransform();
 	void AlignKinematicBodiesToCurrentBones();
 	FName GetEffectiveSimulationRootBone() const;
-	bool ShouldBodySimulate(const class USkeletalBodySetup* BodySetup, FName SimulationRootBone) const;
-	void SyncActorTransformToSimulatedRoot();
 };

@@ -37,6 +37,10 @@ struct DEFORMATION_API FDeformationBoneSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
 	bool bUseCustomDeformationDirection = false;
 
+	/** If true, this bone accumulates only along one direction and cannot be pushed back. Disabled by default. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
+	bool bLockDeformationDirection = false;
+
 	/** One-way component-space dent direction. Offsets only accumulate in this direction and never push back. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction", meta = (EditCondition = "bUseCustomDeformationDirection"))
 	FVector DeformationDirectionCS = FVector::ForwardVector;
