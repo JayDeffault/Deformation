@@ -185,6 +185,7 @@ private:
 
 	const FDeformationBoneSettings* FindSettings(FName BoneName) const;
 	FName ResolveHitBone(const FHitResult& Hit) const;
+	FName FindClosestDeformableBody(const FVector& HitLocationWS) const;
 	FDeformationBoneState& FindOrAddState(FName BoneName);
 	FVector ResolveInwardDeformationDirection(const FVector& HitLocationWS, const FVector& HitNormalWS) const;
 	void ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const;

@@ -6,6 +6,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "PhysicsEngine/BodyInstance.h"
+#include "PhysicsEngine/PhysicsAsset.h"
+#include "PhysicsEngine/SkeletalBodySetup.h"
 
 UDeformationComponent::UDeformationComponent()
 {
@@ -150,12 +152,9 @@ bool UDeformationComponent::RefreshDirectBoneTransforms()
 		PoseableMesh->CopyPoseFromSkeletalComponent(TargetMesh);
 	}
 
-	if (!bMovePhysicsBodyWithDeformation)
+	for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
 	{
-		for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
-		{
-			ApplyDirectOffsetToPoseableBone(Pair.Key, Pair.Value.OffsetCS);
-		}
+		ApplyDirectOffsetToPoseableBone(Pair.Key, Pair.Value.OffsetCS);
 	}
 
 	PoseableMesh->RefreshBoneTransforms();
@@ -322,17 +321,59 @@ const FDeformationBoneSettings* UDeformationComponent::FindSettings(FName BoneNa
 FName UDeformationComponent::ResolveHitBone(const FHitResult& Hit) const
 {
 	// For OnComponentHit on TargetMesh, MyBoneName is the PHAT body/bone that belongs to this vehicle.
-	if (!Hit.MyBoneName.IsNone())
+	if (!Hit.MyBoneName.IsNone() && !IsRootBone(Hit.MyBoneName))
 	{
 		return Hit.MyBoneName;
 	}
 
-	if (!Hit.BoneName.IsNone())
+	if (!Hit.BoneName.IsNone() && !IsRootBone(Hit.BoneName))
 	{
 		return Hit.BoneName;
 	}
 
-	return NAME_None;
+	// When only the chassis/root body is simulated and the dent bodies are kinematic, Chaos can report the root body
+	// for the component hit. Use the closest non-root PHAT body to the impact point so side panels/doors still deform.
+	return FindClosestDeformableBody(Hit.ImpactPoint);
+}
+
+FName UDeformationComponent::FindClosestDeformableBody(const FVector& HitLocationWS) const
+{
+	if (!TargetMesh)
+	{
+		return NAME_None;
+	}
+
+	UPhysicsAsset* PhysicsAsset = TargetMesh->GetPhysicsAsset();
+	if (!PhysicsAsset)
+	{
+		return NAME_None;
+	}
+
+	FName ClosestBone = NAME_None;
+	float ClosestDistanceSquared = TNumericLimits<float>::Max();
+
+	for (USkeletalBodySetup* BodySetup : PhysicsAsset->SkeletalBodySetups)
+	{
+		if (!BodySetup || BodySetup->BoneName.IsNone() || IsRootBone(BodySetup->BoneName))
+		{
+			continue;
+		}
+
+		const FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BodySetup->BoneName);
+		const int32 BoneIndex = TargetMesh->GetBoneIndex(BodySetup->BoneName);
+		const FVector BodyLocationWS = BodyInstance
+			? BodyInstance->GetUnrealWorldTransform().GetLocation()
+			: (BoneIndex == INDEX_NONE ? FVector::ZeroVector : TargetMesh->GetBoneTransform(BoneIndex).GetLocation());
+
+		const float DistanceSquared = FVector::DistSquared(BodyLocationWS, HitLocationWS);
+		if (DistanceSquared < ClosestDistanceSquared)
+		{
+			ClosestDistanceSquared = DistanceSquared;
+			ClosestBone = BodySetup->BoneName;
+		}
+	}
+
+	return ClosestBone;
 }
 
 FDeformationBoneState& UDeformationComponent::FindOrAddState(FName BoneName)
@@ -407,6 +448,8 @@ void UDeformationComponent::MovePhysicsBodyByOffset(FName BoneName, const FVecto
 
 	FTransform BodyTransform = BodyInstance->GetUnrealWorldTransform();
 	BodyTransform.AddToTranslation(OffsetWS);
+	BodyInstance->SetInstanceSimulatePhysics(false);
+	BodyInstance->SetKinematicTarget(BodyTransform);
 	BodyInstance->SetBodyTransform(BodyTransform, ETeleportType::TeleportPhysics);
 	TargetMesh->WakeRigidBody(BoneName);
 }
