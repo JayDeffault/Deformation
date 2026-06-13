@@ -149,6 +149,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
 	bool bForceInwardDeformation = false;
 
+	/** If true, repeated hits add depth up to MaxOffset and opposite hits cannot push the dent back out. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
+	bool bAccumulateHitsToMaxOffset = false;
+
 	/** Optional automatic interpolation back to zero; 0 keeps dents permanently until ResetDeformation is called. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation", meta = (ClampMin = "0.0"))
 	float RecoverySpeed = 0.0f;

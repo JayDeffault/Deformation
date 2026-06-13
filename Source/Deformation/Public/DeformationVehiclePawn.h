@@ -54,6 +54,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
 	bool bForceInwardDeformation = false;
 
+	/** If true, each accepted hit adds dent depth up to MaxOffset and opposite hits cannot push it back out. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direction")
+	bool bAccumulateHitsToMaxOffset = false;
+
 	/** Collision profile applied to TargetMesh so Physics Asset bodies are visible/usable for blocking hits. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	FName CollisionProfileName = TEXT("PhysicsActor");

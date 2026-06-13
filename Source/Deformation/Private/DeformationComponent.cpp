@@ -131,8 +131,8 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 
 	if (bHideTargetMeshWhenUsingPoseable)
 	{
-		TargetMesh->SetVisibility(true, false);
-		TargetMesh->SetHiddenInGame(false, false);
+		TargetMesh->SetVisibility(false, true);
+		TargetMesh->SetHiddenInGame(true, true);
 		TargetMesh->SetRenderInMainPass(false);
 		TargetMesh->SetCastShadow(false);
 	}
@@ -288,7 +288,7 @@ bool UDeformationComponent::ApplyDeformationImpulse(FName BoneName, const FVecto
 
 	const FVector PreviousOffsetCS = State.OffsetCS;
 	float DirectionScale = 1.0f;
-	if (Settings->bUseCustomDeformationDirection || Settings->bLockDeformationDirection)
+	if (Settings->bUseCustomDeformationDirection || Settings->bLockDeformationDirection || bAccumulateHitsToMaxOffset)
 	{
 		if (Settings->bUseCustomDeformationDirection)
 		{

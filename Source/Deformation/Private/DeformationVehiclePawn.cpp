@@ -47,6 +47,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 	DeformationComponent->bOnlyConfiguredBones = false;
 	DeformationComponent->bApplyPhysicsImpulse = !bUseKinematicPhysicsBodies;
 	DeformationComponent->bForceInwardDeformation = bForceInwardDeformation;
+	DeformationComponent->bAccumulateHitsToMaxOffset = bAccumulateHitsToMaxOffset;
 }
 
 void ADeformationVehiclePawn::OnConstruction(const FTransform& Transform)
@@ -89,6 +90,7 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 	DeformationComponent->bOnlyConfiguredBones = false;
 	DeformationComponent->bApplyPhysicsImpulse = !bUseKinematicPhysicsBodies;
 	DeformationComponent->bForceInwardDeformation = bForceInwardDeformation;
+	DeformationComponent->bAccumulateHitsToMaxOffset = bAccumulateHitsToMaxOffset;
 
 	DeformationComponent->BindToMesh(TargetMesh);
 	DeformationComponent->SetPoseableMesh(PoseableMesh);
