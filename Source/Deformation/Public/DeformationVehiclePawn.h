@@ -70,6 +70,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bMovePhysicsBodyWithDeformation = true;
 
+	/** If true, PHAT body locations are refreshed from final poseable bone locations after deformation. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bSyncPhysicsBodiesToPoseableBones = true;
+
 	/** Prefer kinematic deformation helper bodies when a hit is reported on a simulated door/hinge/chassis body. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bPreferKinematicBodiesForDeformation = true;

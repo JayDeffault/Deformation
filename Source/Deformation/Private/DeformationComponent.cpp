@@ -163,6 +163,7 @@ bool UDeformationComponent::RefreshDirectBoneTransforms()
 	}
 
 	PoseableMesh->RefreshBoneTransforms();
+	SyncPhysicsBodiesToPoseableBones();
 	return true;
 }
 
@@ -602,6 +603,40 @@ void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, cons
 
 	const FVector CurrentLocationCS = PoseableMesh->GetBoneLocationByName(BoneName, EBoneSpaces::ComponentSpace);
 	PoseableMesh->SetBoneLocationByName(BoneName, CurrentLocationCS + OffsetCS, EBoneSpaces::ComponentSpace);
+}
+
+void UDeformationComponent::SyncPhysicsBodiesToPoseableBones() const
+{
+	if (!bMovePhysicsBodyWithDeformation || !bSyncPhysicsBodiesToPoseableBones || !TargetMesh || !PoseableMesh)
+	{
+		return;
+	}
+
+	for (const TPair<FName, FDeformationBoneState>& Pair : BoneStates)
+	{
+		const FName BoneName = Pair.Key;
+		if (BoneName.IsNone() || IsRootBone(BoneName))
+		{
+			continue;
+		}
+
+		FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BoneName);
+		if (!BodyInstance)
+		{
+			continue;
+		}
+
+		if (bDeformOnlyKinematicBodies && BodyInstance->IsInstanceSimulatingPhysics())
+		{
+			continue;
+		}
+
+		const FVector BoneLocationCS = PoseableMesh->GetBoneLocationByName(BoneName, EBoneSpaces::ComponentSpace);
+		const FVector BoneLocationWS = PoseableMesh->GetComponentTransform().TransformPosition(BoneLocationCS);
+		FTransform BodyTransform = BodyInstance->GetUnrealWorldTransform();
+		BodyTransform.SetLocation(BoneLocationWS);
+		BodyInstance->SetBodyTransform(BodyTransform, ETeleportType::TeleportPhysics);
+	}
 }
 
 void UDeformationComponent::MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS) const

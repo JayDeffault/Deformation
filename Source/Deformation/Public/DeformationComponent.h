@@ -140,6 +140,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bMovePhysicsBodyWithDeformation = true;
 
+	/** If true, PHAT body locations are refreshed from the final poseable bone locations after visual deformation. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bSyncPhysicsBodiesToPoseableBones = true;
+
 	/** If true, only kinematic PHAT bodies can receive deformation; disabled by default so every hit bone can dent. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bDeformOnlyKinematicBodies = false;
@@ -240,6 +244,7 @@ private:
 	FVector GetAxisVector(EDeformationBoneNormalAxis Axis) const;
 	void ApplyPhysicsBodyTransformsToPoseable() const;
 	void ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const;
+	void SyncPhysicsBodiesToPoseableBones() const;
 	void MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS) const;
 	void RemoveRootBoneState();
 

@@ -73,6 +73,7 @@ If a kinematic deformation body is parented under a simulated body (for example 
 - `bUseCustomDeformationDirection` / `DeformationDirectionCS`: optional per-bone component-space dent direction when directional locking is needed.
 - `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
 - `MovePhysicsBodyWithDeformation`: enabled on the pawn by default; teleports the impacted PHAT body by the accepted dent delta so debug collision bodies move together with the visible deformation.
+- `SyncPhysicsBodiesToPoseableBones`: enabled on the pawn by default; after final poseable bone offsets are applied, matching PHAT body locations are refreshed from those deformed bone locations so collision/debug bodies stay attached to the visual dents.
 - `PreferKinematicBodiesForDeformation`: enabled on the pawn by default; when a simulated door/chassis body reports the hit, deformation is redirected to the nearest kinematic helper body so the moved PHAT body matches the visible dent. The poseable mesh also receives the stored offset directly, so the visual dent remains visible even when Chaos does not expose a body move as a skeletal pose change.
 - `DeformOnlyKinematicBodies`: disabled by default; enable it only when simulated constrained bodies must never receive deformation offsets.
 - `ApplyPhysicsImpulse`: also pushes the impacted physics body inward when a valid deformation hit is accepted.
