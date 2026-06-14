@@ -70,6 +70,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bMovePhysicsBodyWithDeformation = true;
 
+	/** Prefer kinematic deformation helper bodies when a hit is reported on a simulated door/hinge/chassis body. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bPreferKinematicBodiesForDeformation = true;
+
 	/** Collision profile applied to TargetMesh so Physics Asset bodies are visible/usable for blocking hits. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	FName CollisionProfileName = TEXT("PhysicsActor");

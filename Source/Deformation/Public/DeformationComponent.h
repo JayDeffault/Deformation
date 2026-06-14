@@ -144,6 +144,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bDeformOnlyKinematicBodies = false;
 
+	/** Prefer nearest kinematic deformation helper body when Chaos reports a simulated hinge/door/chassis body. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bPreferKinematicBodiesForDeformation = true;
+
 	/** If true, generated AddImpulse uses velocity change mode and is independent from body mass. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bVelocityChange = false;

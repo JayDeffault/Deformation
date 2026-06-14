@@ -43,7 +43,7 @@ If you need a custom collision channel, change `CollisionProfileName` on the paw
 
 `UDeformationComponent` listens for `OnComponentHit` on `TargetMesh`, resolves the impacted PHAT body bone, converts collision normal impulse into an inward component-space offset, and moves the matching PHAT body inward. `PoseableMesh` copies the resulting `TargetMesh` pose every tick and then applies current PHAT body transforms, so simulated doors/hinges are visible even when the hidden physics mesh is not rendered.
 
-Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from velocity along the hit normal via `KinematicHitImpulseScale`; tangential rubbing/sliding is ignored. That lets collision events from kinematic bodies still move bones and create visible dents. If Chaos reports the simulated `RootBone` for a hit while the actual dent bodies are kinematic, the component falls back to the closest non-root PHAT body to the hit point, so the chassis stays protected but doors/panels can still deform.
+Kinematic PHAT hits can report zero `NormalImpulse`, so the component estimates an impulse from velocity along the hit normal via `KinematicHitImpulseScale`; tangential rubbing/sliding is ignored. That lets collision events from kinematic bodies still move bones and create visible dents. If Chaos reports a simulated `RootBone`, door, hinge, or chassis body while the actual dent bodies are kinematic, the component prefers the closest kinematic non-root PHAT body to the hit point, so debug collision bodies for dents move together with the visual deformation.
 
 By default, accepted hits deform along each bone normal axis, accumulate inward dent depth up to `MaxOffset`, and opposite hits cannot push the dent back out. This is intended for vehicles whose deformation bones are authored like a hedgehog: set `BoneNormalAxis` to the local axis that points inward for those bones.
 
@@ -72,7 +72,8 @@ If a kinematic deformation body is parented under a simulated body (for example 
 - `bAccumulateHitsToMaxOffset`: global one-way accumulation mode; enabled by default to deepen dents up to the configured maximum without allowing push-back.
 - `bUseCustomDeformationDirection` / `DeformationDirectionCS`: optional per-bone component-space dent direction when directional locking is needed.
 - `ApplyDirectBoneTransforms`: enabled by default to move the visible poseable bones directly from C++.
-- `MovePhysicsBodyWithDeformation`: enabled on the pawn by default; teleports the impacted PHAT body by the accepted dent delta so debug collision bodies move together with the visible deformation. The poseable mesh also receives the stored offset directly, so the visual dent remains visible even when Chaos does not expose a body move as a skeletal pose change.
+- `MovePhysicsBodyWithDeformation`: enabled on the pawn by default; teleports the impacted PHAT body by the accepted dent delta so debug collision bodies move together with the visible deformation.
+- `PreferKinematicBodiesForDeformation`: enabled on the pawn by default; when a simulated door/chassis body reports the hit, deformation is redirected to the nearest kinematic helper body so the moved PHAT body matches the visible dent. The poseable mesh also receives the stored offset directly, so the visual dent remains visible even when Chaos does not expose a body move as a skeletal pose change.
 - `DeformOnlyKinematicBodies`: disabled by default; enable it only when simulated constrained bodies must never receive deformation offsets.
 - `ApplyPhysicsImpulse`: also pushes the impacted physics body inward when a valid deformation hit is accepted.
 - `RecoverySpeed`: keep `0` for permanent dents, or set above `0` for dents that return toward zero.

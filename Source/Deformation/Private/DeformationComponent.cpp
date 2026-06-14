@@ -382,12 +382,20 @@ FName UDeformationComponent::ResolveHitBone(const FHitResult& Hit) const
 	// For OnComponentHit on TargetMesh, MyBoneName is the PHAT body/bone that belongs to this vehicle.
 	if (!Hit.MyBoneName.IsNone() && !IsRootBone(Hit.MyBoneName) && CanDeformPhysicsBody(Hit.MyBoneName))
 	{
-		return Hit.MyBoneName;
+		FBodyInstance* BodyInstance = TargetMesh ? TargetMesh->GetBodyInstance(Hit.MyBoneName) : nullptr;
+		if (!bPreferKinematicBodiesForDeformation || (BodyInstance && !BodyInstance->IsInstanceSimulatingPhysics()))
+		{
+			return Hit.MyBoneName;
+		}
 	}
 
 	if (!Hit.BoneName.IsNone() && !IsRootBone(Hit.BoneName) && CanDeformPhysicsBody(Hit.BoneName))
 	{
-		return Hit.BoneName;
+		FBodyInstance* BodyInstance = TargetMesh ? TargetMesh->GetBodyInstance(Hit.BoneName) : nullptr;
+		if (!bPreferKinematicBodiesForDeformation || (BodyInstance && !BodyInstance->IsInstanceSimulatingPhysics()))
+		{
+			return Hit.BoneName;
+		}
 	}
 
 	// When only the chassis/root body is simulated and the dent bodies are kinematic, Chaos can report the root body
@@ -410,6 +418,8 @@ FName UDeformationComponent::FindClosestDeformableBody(const FVector& HitLocatio
 
 	FName ClosestBone = NAME_None;
 	float ClosestDistanceSquared = TNumericLimits<float>::Max();
+	FName ClosestKinematicBone = NAME_None;
+	float ClosestKinematicDistanceSquared = TNumericLimits<float>::Max();
 
 	for (USkeletalBodySetup* BodySetup : PhysicsAsset->SkeletalBodySetups)
 	{
@@ -435,9 +445,15 @@ FName UDeformationComponent::FindClosestDeformableBody(const FVector& HitLocatio
 			ClosestDistanceSquared = DistanceSquared;
 			ClosestBone = BodySetup->BoneName;
 		}
+
+		if (bPreferKinematicBodiesForDeformation && BodyInstance && !BodyInstance->IsInstanceSimulatingPhysics() && DistanceSquared < ClosestKinematicDistanceSquared)
+		{
+			ClosestKinematicDistanceSquared = DistanceSquared;
+			ClosestKinematicBone = BodySetup->BoneName;
+		}
 	}
 
-	return ClosestBone;
+	return ClosestKinematicBone.IsNone() ? ClosestBone : ClosestKinematicBone;
 }
 
 bool UDeformationComponent::CanDeformPhysicsBody(FName BoneName) const
