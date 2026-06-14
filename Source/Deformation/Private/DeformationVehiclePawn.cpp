@@ -44,6 +44,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 	DeformationComponent->bApplyDirectBoneTransforms = true;
 	DeformationComponent->bAutoCreatePoseableMesh = false;
 	DeformationComponent->bHideTargetMeshWhenUsingPoseable = true;
+	DeformationComponent->bRefreshDeformationEveryTick = bRefreshDeformationEveryTick;
 	DeformationComponent->bOnlyConfiguredBones = false;
 	DeformationComponent->bApplyPhysicsImpulse = !bUseKinematicPhysicsBodies;
 	DeformationComponent->bForceInwardDeformation = bForceInwardDeformation;
@@ -72,7 +73,10 @@ void ADeformationVehiclePawn::BeginPlay()
 void ADeformationVehiclePawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	AlignKinematicBodiesToCurrentBones();
+	if (bAlignKinematicBodiesEveryTick)
+	{
+		AlignKinematicBodiesToCurrentBones();
+	}
 }
 
 void ADeformationVehiclePawn::ConfigureDeformation()
@@ -92,6 +96,7 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 	DeformationComponent->bApplyDirectBoneTransforms = true;
 	DeformationComponent->bAutoCreatePoseableMesh = false;
 	DeformationComponent->bHideTargetMeshWhenUsingPoseable = true;
+	DeformationComponent->bRefreshDeformationEveryTick = bRefreshDeformationEveryTick;
 	DeformationComponent->bOnlyConfiguredBones = false;
 	DeformationComponent->bApplyPhysicsImpulse = !bUseKinematicPhysicsBodies;
 	DeformationComponent->bForceInwardDeformation = bForceInwardDeformation;

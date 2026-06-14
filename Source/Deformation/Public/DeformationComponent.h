@@ -132,6 +132,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
 	bool bCopyTargetPoseBeforeApplyingDirectOffsets = true;
 
+	/** If true, refresh poseable/PHAT body transforms every tick; disabled by default so dents stay fixed until next hit. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
+	bool bRefreshDeformationEveryTick = false;
+
 	/** If true, AddImpulse is called on the impacted physics body as well as storing the deformation offset. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bApplyPhysicsImpulse = true;

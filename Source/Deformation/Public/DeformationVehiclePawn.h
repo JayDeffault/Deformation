@@ -102,6 +102,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bWakeRigidBodies = true;
 
+	/** If true, kinematic helper PHAT bodies are realigned every tick; disabled by default so deformed bodies stay fixed until next hit. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bAlignKinematicBodiesEveryTick = false;
+
+	/** If true, poseable/PHAT deformation state is refreshed every tick; disabled by default to avoid post-hit jitter. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Direct Bones")
+	bool bRefreshDeformationEveryTick = false;
+
 	/** Push current pawn defaults into meshes and DeformationComponent. */
 	UFUNCTION(BlueprintCallable, Category = "Deformation")
 	void ConfigureDeformation();
