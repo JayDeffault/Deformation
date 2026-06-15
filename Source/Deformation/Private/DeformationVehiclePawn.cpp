@@ -53,6 +53,7 @@ ADeformationVehiclePawn::ADeformationVehiclePawn()
 	DeformationComponent->bAccumulateHitsToMaxOffset = bAccumulateHitsToMaxOffset;
 	DeformationComponent->bMovePhysicsBodyWithDeformation = bMovePhysicsBodyWithDeformation;
 	DeformationComponent->bSyncPhysicsBodiesToPoseableBones = bSyncPhysicsBodiesToPoseableBones;
+	DeformationComponent->bKeepPhysicsBodiesAttachedToBones = bKeepPhysicsBodiesAttachedToBones;
 	DeformationComponent->bPreferKinematicBodiesForDeformation = bPreferKinematicBodiesForDeformation;
 }
 
@@ -105,6 +106,7 @@ void ADeformationVehiclePawn::ConfigureDeformation()
 	DeformationComponent->bAccumulateHitsToMaxOffset = bAccumulateHitsToMaxOffset;
 	DeformationComponent->bMovePhysicsBodyWithDeformation = bMovePhysicsBodyWithDeformation;
 	DeformationComponent->bSyncPhysicsBodiesToPoseableBones = bSyncPhysicsBodiesToPoseableBones;
+	DeformationComponent->bKeepPhysicsBodiesAttachedToBones = bKeepPhysicsBodiesAttachedToBones;
 	DeformationComponent->bPreferKinematicBodiesForDeformation = bPreferKinematicBodiesForDeformation;
 
 	DeformationComponent->BindToMesh(TargetMesh);

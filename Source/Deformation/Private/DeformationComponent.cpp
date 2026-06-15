@@ -65,6 +65,10 @@ void UDeformationComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	{
 		RefreshDirectBoneTransforms();
 	}
+	else if (bKeepPhysicsBodiesAttachedToBones && BoneStates.Num() > 0)
+	{
+		SyncPhysicsBodiesToPoseableBones();
+	}
 }
 
 void UDeformationComponent::BindToMesh(USkeletalMeshComponent* MeshComponent)

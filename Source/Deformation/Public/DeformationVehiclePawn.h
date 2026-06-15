@@ -74,6 +74,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bSyncPhysicsBodiesToPoseableBones = true;
 
+	/** Keep deformed PHAT bodies attached to their poseable bones when Chaos restores kinematic bodies from the source mesh pose. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bKeepPhysicsBodiesAttachedToBones = true;
+
 	/** Prefer kinematic deformation helper bodies when a hit is reported on a simulated door/hinge/chassis body. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bPreferKinematicBodiesForDeformation = true;

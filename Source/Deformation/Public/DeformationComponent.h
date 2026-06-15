@@ -148,6 +148,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bSyncPhysicsBodiesToPoseableBones = true;
 
+	/** Keep deformed PHAT bodies attached to their poseable bones after Chaos/kinematic updates try to restore them. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
+	bool bKeepPhysicsBodiesAttachedToBones = true;
+
 	/** If true, only kinematic PHAT bodies can receive deformation; disabled by default so every hit bone can dent. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Deformation|Physics")
 	bool bDeformOnlyKinematicBodies = false;
