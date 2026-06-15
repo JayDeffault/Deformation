@@ -576,6 +576,11 @@ void UDeformationComponent::ApplyPhysicsBodyTransformsToPoseable() const
 			continue;
 		}
 
+		if (BoneStates.Contains(BodySetup->BoneName))
+		{
+			continue;
+		}
+
 		FBodyInstance* BodyInstance = TargetMesh->GetBodyInstance(BodySetup->BoneName);
 		if (!BodyInstance)
 		{
@@ -609,7 +614,7 @@ void UDeformationComponent::ApplyDirectOffsetToPoseableBone(FName BoneName, cons
 	PoseableMesh->SetBoneLocationByName(BoneName, CurrentLocationCS + OffsetCS, EBoneSpaces::ComponentSpace);
 }
 
-void UDeformationComponent::SyncPhysicsBodiesToPoseableBones() const
+void UDeformationComponent::SyncPhysicsBodiesToPoseableBones()
 {
 	if (!bMovePhysicsBodyWithDeformation || !bSyncPhysicsBodiesToPoseableBones || !TargetMesh || !PoseableMesh)
 	{
@@ -635,15 +640,33 @@ void UDeformationComponent::SyncPhysicsBodiesToPoseableBones() const
 			continue;
 		}
 
-		const FVector BoneLocationCS = PoseableMesh->GetBoneLocationByName(BoneName, EBoneSpaces::ComponentSpace);
-		const FVector BoneLocationWS = PoseableMesh->GetComponentTransform().TransformPosition(BoneLocationCS);
-		FTransform BodyTransform = BodyInstance->GetUnrealWorldTransform();
-		BodyTransform.SetLocation(BoneLocationWS);
-		BodyInstance->SetBodyTransform(BodyTransform, ETeleportType::TeleportPhysics);
+		const int32 PoseableBoneIndex = PoseableMesh->GetBoneIndex(BoneName);
+		if (PoseableBoneIndex == INDEX_NONE)
+		{
+			continue;
+		}
+
+		const FTransform PoseableBoneWorldTransform = PoseableMesh->GetBoneTransform(PoseableBoneIndex);
+		const FTransform BodyWorldTransform = BodyInstance->GetUnrealWorldTransform();
+		const FTransform BodyRelativeToBone = GetInitialBodyRelativeToBone(BoneName, BodyWorldTransform, PoseableBoneWorldTransform);
+		const FTransform DesiredBodyTransform = BodyRelativeToBone * PoseableBoneWorldTransform;
+		BodyInstance->SetBodyTransform(DesiredBodyTransform, ETeleportType::TeleportPhysics);
 	}
 }
 
-void UDeformationComponent::MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS) const
+FTransform UDeformationComponent::GetInitialBodyRelativeToBone(FName BoneName, const FTransform& BodyWorldTransform, const FTransform& BoneWorldTransform)
+{
+	if (FTransform* CachedRelativeTransform = InitialBodyRelativeToBone.Find(BoneName))
+	{
+		return *CachedRelativeTransform;
+	}
+
+	const FTransform RelativeTransform = BodyWorldTransform.GetRelativeTransform(BoneWorldTransform);
+	InitialBodyRelativeToBone.Add(BoneName, RelativeTransform);
+	return RelativeTransform;
+}
+
+void UDeformationComponent::MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS)
 {
 	if (!TargetMesh || BoneName.IsNone() || IsRootBone(BoneName) || OffsetWS.IsNearlyZero())
 	{
@@ -659,6 +682,12 @@ void UDeformationComponent::MovePhysicsBodyByOffset(FName BoneName, const FVecto
 	if (bDeformOnlyKinematicBodies && BodyInstance->IsInstanceSimulatingPhysics())
 	{
 		return;
+	}
+
+	const int32 BoneIndex = TargetMesh->GetBoneIndex(BoneName);
+	if (BoneIndex != INDEX_NONE)
+	{
+		GetInitialBodyRelativeToBone(BoneName, BodyInstance->GetUnrealWorldTransform(), TargetMesh->GetBoneTransform(BoneIndex));
 	}
 
 	FTransform BodyTransform = BodyInstance->GetUnrealWorldTransform();

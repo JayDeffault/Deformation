@@ -248,10 +248,14 @@ private:
 	FVector GetAxisVector(EDeformationBoneNormalAxis Axis) const;
 	void ApplyPhysicsBodyTransformsToPoseable() const;
 	void ApplyDirectOffsetToPoseableBone(FName BoneName, const FVector& OffsetCS) const;
-	void SyncPhysicsBodiesToPoseableBones() const;
-	void MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS) const;
+	void SyncPhysicsBodiesToPoseableBones();
+	void MovePhysicsBodyByOffset(FName BoneName, const FVector& OffsetWS);
+	FTransform GetInitialBodyRelativeToBone(FName BoneName, const FTransform& BodyWorldTransform, const FTransform& BoneWorldTransform);
 	void RemoveRootBoneState();
 
 	UPROPERTY(Transient)
 	TMap<FName, FDeformationBoneState> BoneStates;
+
+	UPROPERTY(Transient)
+	TMap<FName, FTransform> InitialBodyRelativeToBone;
 };
