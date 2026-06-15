@@ -132,7 +132,11 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 	PoseableMesh->SetRelativeTransform(FTransform::Identity);
 	PoseableMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PoseableMesh->SetGenerateOverlapEvents(false);
+	PoseableMesh->SetRenderInMainPass(true);
+	PoseableMesh->SetRenderInDepthPass(true);
 	PoseableMesh->SetCastShadow(true);
+	PoseableMesh->SetCastHiddenShadow(false);
+	PoseableMesh->SetVisibleInRayTracing(true);
 	PoseableMesh->SetVisibility(true, true);
 	PoseableMesh->SetHiddenInGame(false, true);
 	PoseableMesh->CopyPoseFromSkeletalComponent(TargetMesh);
@@ -142,7 +146,15 @@ bool UDeformationComponent::InitializeDirectBoneTransforms()
 		TargetMesh->SetVisibility(true, false);
 		TargetMesh->SetHiddenInGame(false, false);
 		TargetMesh->SetRenderInMainPass(false);
+		TargetMesh->SetRenderInDepthPass(false);
 		TargetMesh->SetCastShadow(false);
+		TargetMesh->SetCastHiddenShadow(false);
+		TargetMesh->SetVisibleInRayTracing(false);
+		PoseableMesh->SetRenderInMainPass(true);
+		PoseableMesh->SetRenderInDepthPass(true);
+		PoseableMesh->SetCastShadow(true);
+		PoseableMesh->SetCastHiddenShadow(false);
+		PoseableMesh->SetVisibleInRayTracing(true);
 		PoseableMesh->SetVisibility(true, true);
 		PoseableMesh->SetHiddenInGame(false, true);
 	}

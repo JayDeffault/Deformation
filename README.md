@@ -35,7 +35,7 @@ By default you do not need Control Rig, an Animation Blueprint, or per-bone setu
 - When `ForceBlockingPhysicsCollision` is enabled, the mesh object type is `PhysicsBody` and all channels block, so PHAT bodies are easy to see and test.
 - All rigid bodies are woken at setup time.
 
-`PoseableMesh` has collision disabled on purpose. It is the only visible deformed copy and is attached to `TargetMesh`, so it inherits the same root physics transform; use PHAT/debug collision on `TargetMesh`. When the target render mesh is hidden, it stays visible to debug collision tools but is removed from the main render pass and shadow rendering, so the hidden physics mesh does not draw a second set of visible polygons while the child `PoseableMesh` remains visible.
+`PoseableMesh` has collision disabled on purpose. It is the only visible deformed copy and is attached to `TargetMesh`, so it inherits the same root physics transform; use PHAT/debug collision on `TargetMesh`. When the target render mesh is hidden, it stays visible to debug collision tools but is removed from the main/depth render passes, hidden-shadow casting and ray tracing, so the hidden physics mesh does not draw duplicate polygons or produce black lighting artifacts when `Show Collision` is disabled while the child `PoseableMesh` remains visible.
 
 If you need a custom collision channel, change `CollisionProfileName` on the pawn, but keep it blocking the objects that should dent the vehicle.
 
